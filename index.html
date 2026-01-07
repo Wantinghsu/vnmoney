@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🇻🇳 越南記帳</title>
+    <title>🇻🇳 越南記帳 V32 (智慧防誤判版)</title>
     <style>
-        /* 20260107 01 ：*/
+        /* V32 樣式：保持 V31 穩定架構 */
         body { background-color: #f0f0f0; font-family: sans-serif; margin: 0; padding: 10px; }
         * { box-sizing: border-box; }
         
@@ -97,7 +97,7 @@
 <script>
     // 資料庫 Key
     var KEY = 'vietnam_trip_v1_final';
-    // 這裡更新了核心匯率變數
+    // 匯率
     var RATE = 835.63;
     var list = [];
     var resetClickCount = 0;
@@ -285,6 +285,7 @@
         }
     }
 
+    // --- V32 修正：徹底分離分享與下載 ---
     async function exportDataSmart() {
         if(list.length === 0) { showMsg("沒資料可匯出"); return; }
         
@@ -300,21 +301,37 @@
         
         var fileName = "越南記帳_" + YYYY + MM + DD + "_" + HH + mm + "_" + ss + ".json";
 
-        if (navigator.share) {
-            try {
-                var file = new File([jsonStr], fileName, { type: "application/json" });
-                await navigator.share({
-                    files: [file],
-                    title: '越南記帳備份',
-                    text: '備份檔：' + fileName
-                });
-                showMsg("已開啟分享選單");
-                return;
-            } catch (err) {
-                console.log("分享失敗，轉用下載模式");
+        // 1. 檢測是否支援檔案分享
+        var isShareSupported = false;
+        if (navigator.share && navigator.canShare) {
+            var testFile = new File([jsonStr], fileName, { type: "application/json" });
+            if (navigator.canShare({ files: [testFile] })) {
+                isShareSupported = true;
             }
         }
 
+        // 2. 如果支援分享 (手機端)：只執行分享，結束。
+        if (isShareSupported) {
+            try {
+                var file = new File([jsonStr], fileName, { type: "application/json" });
+                await navigator.share({
+                    files: [file]
+                    // 不放 title，不放 text，最純淨的分享
+                });
+                showMsg("已開啟存檔選單");
+            } catch (err) {
+                // 如果是使用者按叉叉取消 (AbortError)，就顯示已取消，不做任何事
+                if (err.name === 'AbortError' || err.message.indexOf('Abort') !== -1) {
+                    showMsg("已取消匯出");
+                } else {
+                    console.log("分享出錯:", err);
+                    showMsg("匯出功能異常");
+                }
+            }
+            return; // ⚠️ 關鍵：無論成功失敗，絕對不往下執行下載
+        }
+
+        // 3. 如果不支援分享 (電腦端/舊手機)：才執行直接下載
         var blob = new Blob([jsonStr], {type: "application/json"});
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
