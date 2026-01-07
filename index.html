@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🇻🇳 越南記帳</title>
     <style>
-        /* V36 即時顯示貨幣換算*/
+        /* V37 樣式：保持 V36 穩定架構 */
         body { background-color: #f0f0f0; font-family: sans-serif; margin: 0; padding: 10px; }
         * { box-sizing: border-box; }
         
@@ -30,22 +30,14 @@
         
         #summary { background: #fff; border: 2px solid #000; padding: 10px; line-height: 1.8; font-size: 16px; color: #000; }
         
-        /* 狀態列 */
         #statusMsg { 
             color: red; font-weight: bold; text-align: center; 
             padding: 10px; border: 2px dashed red; margin-bottom: 10px; 
             background: #fff; display: none; 
         }
         
-        /* 即時換算文字樣式 */
         #realtimeText {
-            color: blue;
-            font-weight: bold;
-            font-size: 16px;
-            margin-top: -10px;
-            margin-bottom: 15px;
-            display: block;
-            min-height: 20px; /* 佔位防止跳動 */
+            color: blue; font-weight: bold; font-size: 16px; margin-top: -10px; margin-bottom: 15px; display: block; min-height: 20px;
         }
     </style>
 </head>
@@ -81,7 +73,7 @@
         </select>
 
         <label>5. 金額</label> 
-        <input type="number" id="amountIn" placeholder="0" inputmode="decimal" oninput="updateRealtime()">
+        <input type="text" id="amountIn" placeholder="0" inputmode="decimal" onkeyup="formatInputAndCalc(this)">
         
         <div id="realtimeText"></div>
 
@@ -108,9 +100,7 @@
     </div>
 
 <script>
-    // 資料庫 Key
     var KEY = 'vietnam_trip_v1_final';
-    // 匯率
     var RATE = 835.63;
     var list = [];
     var resetClickCount = 0;
@@ -136,32 +126,55 @@
             try { list = JSON.parse(str); } catch(e){ list = []; }
         }
         render();
-        updateRealtime(); // 初始化時也跑一次
+        updateRealtime();
     }
 
-    // --- V36 新增：即時換算邏輯 ---
-    function updateRealtime() {
-        var amtStr = document.getElementById('amountIn').value;
-        var curr = document.getElementById('currencyIn').value;
-        var display = document.getElementById('realtimeText');
-
-        if (!amtStr) {
-            display.innerText = "";
+    // --- V37 新增：千分位格式化與計算 ---
+    function formatInputAndCalc(input) {
+        // 1. 先把逗號拿掉，取得純數字字串
+        var rawValue = input.value.replace(/,/g, '');
+        
+        // 2. 如果是空值，就不處理
+        if (!rawValue) {
+            updateRealtime();
             return;
         }
 
-        var amt = parseFloat(amtStr);
-        if (isNaN(amt)) {
+        // 3. 檢查是否為合法數字
+        var num = parseFloat(rawValue);
+        if (isNaN(num)) return;
+
+        // 4. 重新格式化為千分位 (toLocaleString 會自動加逗號)
+        // 使用 en-US 確保是用逗號分隔
+        input.value = num.toLocaleString('en-US');
+
+        // 5. 觸發換算
+        updateRealtime();
+    }
+
+    // 取得去除逗號後的真實數字
+    function getRawAmount() {
+        var val = document.getElementById('amountIn').value;
+        if(!val) return 0;
+        // 把逗號刪掉再轉數字
+        return parseFloat(val.replace(/,/g, ''));
+    }
+
+    function updateRealtime() {
+        // V37 修改：改用 getRawAmount 取得正確數值
+        var amt = getRawAmount();
+        var curr = document.getElementById('currencyIn').value;
+        var display = document.getElementById('realtimeText');
+
+        if (isNaN(amt) || amt === 0) {
             display.innerText = "";
             return;
         }
 
         if (curr === 'TWD') {
-            // 如果輸入台幣，顯示等於多少越盾
             var res = Math.round(amt * RATE);
             display.innerText = "= " + res.toLocaleString() + " VND";
         } else {
-            // 如果輸入越盾，顯示等於多少台幣
             var res = Math.round(amt / RATE);
             display.innerText = "= " + res.toLocaleString() + " TWD";
         }
@@ -188,13 +201,15 @@
         document.getElementById('dateIn').value = t.date;
         document.getElementById('memberIn').value = t.member;
         document.getElementById('itemIn').value = t.item;
-        document.getElementById('amountIn').value = t.amount;
+        
+        // V37 修改：編輯時，載入金額要自動加上逗號
+        document.getElementById('amountIn').value = parseFloat(t.amount).toLocaleString('en-US');
+        
         document.getElementById('currencyIn').value = t.currency;
 
         document.getElementById('addBtn').innerText = "💾 儲存修改";
         document.getElementById('cancelBtn').style.display = "block";
         
-        // 觸發即時計算
         updateRealtime();
         
         window.scrollTo(0,0);
@@ -206,21 +221,21 @@
         var d = document.getElementById('dateIn').value;
         var m = document.getElementById('memberIn').value;
         var i = document.getElementById('itemIn').value;
-        var a = document.getElementById('amountIn').value;
+        
+        // V37 修改：使用 getRawAmount 取得去除逗號後的數字
+        var numA = getRawAmount();
+        
         var c = document.getElementById('currencyIn').value;
 
-        if(!a) { showMsg("❌ 金額必填！"); return; }
+        if(numA === 0) { showMsg("❌ 金額必填！"); return; }
         if(!i) i = "(未填)";
-
-        var numA = parseFloat(a);
-        if(isNaN(numA)) numA = 0;
 
         var obj = {
             "id": id ? String(id) : ('ID' + new Date().getTime()),
             "date": d,
             "member": m,
             "item": i,
-            "amount": numA,
+            "amount": numA, // 存入資料庫的是純數字
             "currency": c
         };
 
@@ -309,7 +324,6 @@
         document.getElementById('editId').value = "";
         document.getElementById('itemIn').value = "";
         document.getElementById('amountIn').value = "";
-        // 清除即時顯示
         document.getElementById('realtimeText').innerText = "";
         
         document.getElementById('addBtn').innerText = "＋ 確認儲存";
