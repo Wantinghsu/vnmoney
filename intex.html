@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🇻🇳 越南記帳 V1</title>
+<style>
+/* V1 最終版樣式：保持穩定架構，介面乾淨 */
+body { background-color: #f0f0f0; font-family: sans-serif; margin: 0; padding: 10px; }
+* { box-sizing: border-box; }
+
+h3 { border-bottom: 2px solid #333; padding-bottom: 5px; margin-top: 20px; color: #000; }
+.input-group { background: #fff; padding: 15px; border: 2px solid #000; margin-bottom: 20px; }
+label { display: block; font-weight: bold; margin-bottom: 5px; color: #000; font-size: 16px; }
+
+input, select, button {
+width: 100%; height: 45px; font-size: 16px; margin-bottom: 15px;
+border: 1px solid #000; border-radius: 0; background-color: #fff; color: #000;
+display: block; -webkit-appearance: none;
+}
+input[type="date"] { line-height: 45px; }
+
+button { background-color: #ddd; font-weight: bold; cursor: pointer; border-width: 2px; }
+button:active { background-color: #bbb; }
+#addBtn { background-color: #000; color: #fff; }
+
+table { width: 100%; border-collapse: collapse; background: #fff; border: 2px solid #000; }
+th, td { border: 1px solid #000; padding: 10px; text-align: left; color: #000; }
+th { background-color: #eee; }
+
+#summary { background: #fff; border: 2px solid #000; padding: 10px; line-height: 1.8; font-size: 16px; color: #000; }
+
+/* 狀態列 */
+#statusMsg {
+color: red; font-weight: bold; text-align: center;
+padding: 10px; border: 2px dashed red; margin-bottom: 10px;
+background: #fff; display: none;
+}
+</style>
+</head>
+<body onload="init()">
+
+<h2 style="text-align:center;">🇻🇳 越南記帳 V1</h2>
+
+<div id="statusMsg">系統準備就緒</div>
+
+<div style="margin-bottom: 10px; text-align:right;">
+<input type="file" id="fileIn" onchange="importData(this)" style="display:none">
+<button onclick="document.getElementById('fileIn').click()" style="width:auto; display:inline-block; padding:0 10px;">匯入舊檔</button>
+<button onclick="exportDataSmart()" style="width:auto; display:inline-block; padding:0 10px; background:#e0e0e0;">📤 匯出備份</button>
+</div>
+
+<div class="input-group">
+<input type="hidden" id="editId">
+<label>1. 日期</label> <input type="date" id="dateIn">
+<label>2. 付款人</label>
+<select id="memberIn">
+<option value="榮">榮</option>
+<option value="如">如</option>
+<option value="翔">翔</option>
+<option value="庭">庭</option>
+<option value="中">中</option>
+</select>
+<label>3. 品項</label> <input type="text" id="itemIn" placeholder="輸入項目...">
+<label>4. 金額</label> <input type="number" id="amountIn" placeholder="0">
+<label>5. 幣別</label>
+<select id="currencyIn">
+<option value="VND">VND (越南盾)</option>
+<option value="TWD">TWD (台幣)</option>
+</select>
+
+<button id="addBtn" onclick="saveData()">＋ 確認儲存</button>
+<button id="cancelBtn" onclick="resetForm()" style="display:none; color:red; border-color:red; background:#fff;">取消修改</button>
+</div>
+
+<h3>📊 統計結果 (匯率 1:835)</h3>
+<div id="summary">計算中...</div>
+
+<h3>📝 明細列表</h3>
+<table id="listTable">
+<thead>
+<tr>
+<th>內容</th>
+<th width="80">操作</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<div style="margin-top: 30px; text-align: center;">
+<button id="resetBtn" onclick="hardResetClick()" style="background:#fff; color:red; border:1px dashed red;">⚠️ 清空所有資料</button>
+</div>
+
+<script>
+// 資料庫 Key
+var KEY = 'vietnam_trip_v1_final';
+var RATE = 835;
+var list = [];
+var resetClickCount = 0;
+
+function showMsg(text) {
+var el = document.getElementById('statusMsg');
+el.innerText = text;
+el.style.display = 'block';
+setTimeout(function(){ el.style.display = 'none'; }, 3000);
+}
+
+function init() {
+document.getElementById('dateIn').valueAsDate = new Date();
+var str = localStorage.getItem(KEY);
+if(str) {
+try { list = JSON.parse(str); } catch(e){ list = []; }
+}
+render();
+}
+
+// 將函式掛載到 window，確保 HTML onclick 能呼叫
+window.del = function(id) {
+var newList = [];
+for(var i=0; i<list.length; i++) {
+if(String(list[i].id) !== String(id)) newList.push(list[i]);
+}
+list = newList;
+saveToLocal();
+showMsg("🗑️ 資料已刪除");
+};
+
+window.edit = function(id) {
+var t = null;
+for(var i=0; i<list.length; i++) {
+if(String(list[i].id) === String(id)) t = list[i];
+}
+if(!t) return;
+
+document.getElementById('editId').value = t.id;
+document.getElementById('dateIn').value = t.date;
+document.getElementById('memberIn').value = t.member;
+document.getElementById('itemIn').value = t.item;
+document.getElementById('amountIn').value = t.amount;
+document.getElementById('currencyIn').value = t.currency;
+
+document.getElementById('addBtn').innerText = "💾 儲存修改";
+document.getElementById('cancelBtn').style.display = "block";
+window.scrollTo(0,0);
+showMsg("✏️ 進入編輯模式");
+};
+
+function saveData() {
+var id = document.getElementById('editId').value;
+var d = document.getElementById('dateIn').value;
+var m = document.getElementById('memberIn').value;
+var i = document.getElementById('itemIn').value;
+var a = document.getElementById('amountIn').value;
+var c = document.getElementById('currencyIn').value;
+
+if(!a) { showMsg("❌ 金額必填！"); return; }
+if(!i) i = "(未填)";
+
+var numA = parseFloat(a);
+if(isNaN(numA)) numA = 0;
+
+var obj = {
+"id": id ? String(id) : ('ID' + new Date().getTime()),
+"date": d,
+"member": m,
+"item": i,
+"amount": numA,
+"currency": c
+};
+
+if(id) {
+var idx = -1;
+for(var k=0; k<list.length; k++) {
+if(String(list[k].id) === String(id)) idx = k;
+}
+if(idx !== -1) list[idx] = obj;
+else list.push(obj);
+} else {
+list.push(obj);
+}
+
+resetForm();
+saveToLocal();
+showMsg("✅ 儲存成功！");
+}
+
+function saveToLocal() {
+localStorage.setItem(KEY, JSON.stringify(list));
+render();
+}
+
+function render() {
+var tbody = document.querySelector('#listTable tbody');
+var summary = document.getElementById('summary');
+
+tbody.innerHTML = "";
+list.sort(function(a,b){ return a.date < b.date ? 1 : -1 });
+
+var totalTWD = 0;
+var map = {};
+var names = ["榮", "如", "翔", "庭", "中"];
+for(var n=0; n<names.length; n++) map[names[n]] = 0;
+
+var tableHtml = "";
+for(var k=0; k<list.length; k++) {
+var row = list[k];
+var amt = parseFloat(row.amount) || 0;
+// 精準邏輯：VND 保留小數點運算
+var val = (row.currency == 'VND') ? (amt / RATE) : amt;
+
+totalTWD += val;
+if(map[row.member] === undefined) map[row.member] = 0;
+map[row.member] += val;
+
+tableHtml += "<tr>";
+tableHtml += "<td><b>" + row.date + "</b><br>[" + row.member + "] " + row.item + "<br><span style='color:blue'>" + amt.toLocaleString() + " " + row.currency + "</span></td>";
+
+tableHtml += "<td>";
+tableHtml += "<button onclick=\"window.edit('" + row.id + "')\" style='margin-bottom:5px;'>改</button>";
+tableHtml += "<button onclick=\"window.del('" + row.id + "')\" style='background:#fff; color:red; border-color:red;'>刪</button>";
+tableHtml += "</td>";
+tableHtml += "</tr>";
+}
+tbody.innerHTML = tableHtml;
+
+var htmlStats = "";
+for(var name in map) {
+var rawTWD = map[name];
+var displayTWD = Math.round(rawTWD);
+// 用原始台幣反推回越南盾顯示，避免誤差
+var displayVND = Math.round(rawTWD * RATE);
+htmlStats += "<b>" + name + "</b>: " + displayTWD.toLocaleString() + " 台幣 (" + displayVND.toLocaleString() + " 越盾)<br>";
+}
+var grandVND = Math.round(totalTWD * RATE);
+htmlStats += "<hr style='border:1px solid #000'>";
+htmlStats += "<div style='text-align:center; font-size:18px;'><b>總計: " + Math.round(totalTWD).toLocaleString() + " TWD</b><br>";
+htmlStats += "<small>(" + grandVND.toLocaleString() + " VND)</small></div>";
+
+summary.innerHTML = htmlStats;
+}
+
+function resetForm() {
+document.getElementById('editId').value = "";
+document.getElementById('itemIn').value = "";
+document.getElementById('amountIn').value = "";
+document.getElementById('addBtn').innerText = "＋ 確認儲存";
+document.getElementById('cancelBtn').style.display = "none";
+}
+
+function hardResetClick() {
+var btn = document.getElementById('resetBtn');
+if(resetClickCount === 0) {
+btn.innerText = "🛑 再按一次確定刪除！";
+btn.style.backgroundColor = "red";
+btn.style.color = "white";
+resetClickCount = 1;
+setTimeout(function(){
+resetClickCount = 0;
+btn.innerText = "⚠️ 清空所有資料";
+btn.style.backgroundColor = "#fff";
+btn.style.color = "red";
+}, 3000);
+} else {
+localStorage.removeItem(KEY);
+list = [];
+render();
+showMsg("💥 資料已全部清空");
+resetClickCount = 0;
+btn.innerText = "⚠️ 清空所有資料";
+btn.style.backgroundColor = "#fff";
+btn.style.color = "red";
+}
+}
+
+// 智慧匯出功能 (精確時間檔名)
+async function exportDataSmart() {
+if(list.length === 0) { showMsg("沒資料可匯出"); return; }
+
+var jsonStr = JSON.stringify(list);
+
+// 產生檔名：越南記帳_20260107_1430_50.json
+var now = new Date();
+var YYYY = now.getFullYear();
+var MM = String(now.getMonth() + 1).padStart(2, '0');
+var DD = String(now.getDate()).padStart(2, '0');
+var HH = String(now.getHours()).padStart(2, '0');
+var mm = String(now.getMinutes()).padStart(2, '0');
+var ss = String(now.getSeconds()).padStart(2, '0');
+
+var fileName = "越南記帳_" + YYYY + MM + DD + "_" + HH + mm + "_" + ss + ".json";
+
+// 嘗試使用手機原生的分享功能
+if (navigator.share) {
+try {
+var file = new File([jsonStr], fileName, { type: "application/json" });
+await navigator.share({
+files: [file],
+title: '越南記帳備份',
+text: '備份檔：' + fileName
+});
+showMsg("已開啟分享選單");
+return;
+} catch (err) {
+console.log("分享失敗，轉用下載模式");
+}
+}
+
+// 下載模式 (Fallback)
+var blob = new Blob([jsonStr], {type: "application/json"});
+var url = URL.createObjectURL(blob);
+var a = document.createElement('a');
+a.href = url;
+a.download = fileName;
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+showMsg("已下載檔案");
+}
+
+function importData(input) {
+var f = input.files[0];
+if(!f) return;
+var r = new FileReader();
+r.onload = function(e) {
+try {
+var arr = JSON.parse(e.target.result);
+if(Array.isArray(arr)) {
+for(var i=0; i<arr.length; i++) list.push(arr[i]);
+saveToLocal();
+showMsg("匯入成功");
+}
+} catch(err){ showMsg("檔案錯誤"); }
+input.value = "";
+};
+r.readAsText(f);
+}
+</script>
+</body>
+</html>
