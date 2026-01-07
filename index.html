@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🇻🇳 越南記帳</title>
+    <title>🇻🇳 越南記帳 V35 (自動日期版)</title>
     <style>
-        /* V34 樣式：保持 V33 穩定架構 */
+        /* V35 樣式：保持 V34 穩定架構 */
         body { background-color: #f0f0f0; font-family: sans-serif; margin: 0; padding: 10px; }
         * { box-sizing: border-box; }
         
@@ -110,7 +110,17 @@
     }
 
     function init() {
-        document.getElementById('dateIn').valueAsDate = new Date();
+        // --- V35 新增：自動填入當前日期 ---
+        // 取得今天的日期並轉成 YYYY-MM-DD 格式
+        var today = new Date();
+        var yyyy = today.getFullYear();
+        var mm = String(today.getMonth() + 1).padStart(2, '0'); // 月份是 0-11，所以要+1
+        var dd = String(today.getDate()).padStart(2, '0');
+        var todayStr = yyyy + "-" + mm + "-" + dd;
+        
+        // 設定到 input 欄位
+        document.getElementById('dateIn').value = todayStr;
+
         var str = localStorage.getItem(KEY);
         if(str) {
             try { list = JSON.parse(str); } catch(e){ list = []; }
@@ -258,6 +268,13 @@
         document.getElementById('amountIn').value = "";
         document.getElementById('addBtn').innerText = "＋ 確認儲存";
         document.getElementById('cancelBtn').style.display = "none";
+        
+        // 重置表單後，也要記得把日期重設回今天
+        var today = new Date();
+        var yyyy = today.getFullYear();
+        var mm = String(today.getMonth() + 1).padStart(2, '0');
+        var dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('dateIn').value = yyyy + "-" + mm + "-" + dd;
     }
 
     function hardResetClick() {
