@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🇻🇳 越南記帳 V21 (防重複版)</title>
+    <title>🇻🇳 越南記帳 V27 (精確匯率版)</title>
     <style>
-        /* V21 樣式：保持 V1 最終版的穩定架構 */
+        /* V27 樣式：保持 V26 穩定架構 */
         body { background-color: #f0f0f0; font-family: sans-serif; margin: 0; padding: 10px; }
         * { box-sizing: border-box; }
         
@@ -40,7 +40,7 @@
 </head>
 <body onload="init()">
 
-    <h2 style="text-align:center;">🇻🇳 越南記帳 V21</h2>
+    <h2 style="text-align:center;">🇻🇳 越南記帳 V1</h2>
 
     <div id="statusMsg">系統準備就緒</div>
 
@@ -62,7 +62,10 @@
             <option value="中">中</option>
         </select>
         <label>3. 品項</label> <input type="text" id="itemIn" placeholder="輸入項目...">
-        <label>4. 金額</label> <input type="number" id="amountIn" placeholder="0">
+        
+        <label>4. 金額</label> 
+        <input type="number" id="amountIn" placeholder="0" inputmode="decimal">
+        
         <label>5. 幣別</label> 
         <select id="currencyIn">
             <option value="VND">VND (越南盾)</option>
@@ -73,7 +76,7 @@
         <button id="cancelBtn" onclick="resetForm()" style="display:none; color:red; border-color:red; background:#fff;">取消修改</button>
     </div>
 
-    <h3>📊 統計結果 (匯率 1:835)</h3>
+    <h3>📊 統計結果 (匯率TWD:VND = 1:835.63)</h3>
     <div id="summary">計算中...</div>
 
     <h3>📝 明細列表</h3>
@@ -94,7 +97,8 @@
 <script>
     // 資料庫 Key
     var KEY = 'vietnam_trip_v1_final';
-    var RATE = 835;
+    // 這裡更新了核心匯率變數
+    var RATE = 835.63;
     var list = [];
     var resetClickCount = 0;
 
@@ -210,8 +214,20 @@
             if(map[row.member] === undefined) map[row.member] = 0;
             map[row.member] += val;
 
+            var convertText = "";
+            if (row.currency === 'TWD') {
+                var vndVal = Math.round(amt * RATE);
+                convertText = " ( = " + vndVal.toLocaleString() + " VND)";
+            } else {
+                var twdVal = Math.round(amt / RATE);
+                convertText = " ( = " + twdVal.toLocaleString() + " TWD)";
+            }
+
             tableHtml += "<tr>";
-            tableHtml += "<td><b>" + row.date + "</b><br>[" + row.member + "] " + row.item + "<br><span style='color:blue'>" + amt.toLocaleString() + " " + row.currency + "</span></td>";
+            tableHtml += "<td><b>" + row.date + "</b><br>[" + row.member + "] " + row.item + "<br>";
+            tableHtml += "<span style='color:blue'>" + amt.toLocaleString() + " " + row.currency + "</span>";
+            tableHtml += "<span style='color:black; font-weight:normal;'>" + convertText + "</span>"; 
+            tableHtml += "</td>";
             
             tableHtml += "<td>";
             tableHtml += "<button onclick=\"window.edit('" + row.id + "')\" style='margin-bottom:5px;'>改</button>";
@@ -310,7 +326,6 @@
         showMsg("已下載檔案");
     }
 
-    // --- V21 修改：智慧匯入（防重複） ---
     function importData(input) {
         var f = input.files[0];
         if(!f) return;
@@ -320,7 +335,6 @@
                 var arr = JSON.parse(e.target.result);
                 if(Array.isArray(arr)) {
                     var count = 0;
-                    // 取得目前所有 ID 的列表，方便比對
                     var currentIds = [];
                     for(var k=0; k<list.length; k++) {
                         currentIds.push(String(list[k].id));
@@ -328,7 +342,6 @@
 
                     for(var i=0; i<arr.length; i++) {
                         var newItem = arr[i];
-                        // 檢查 ID 是否已存在
                         if(currentIds.indexOf(String(newItem.id)) === -1) {
                             list.push(newItem);
                             count++;
