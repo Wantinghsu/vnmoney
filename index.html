@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🇻🇳 越南記帳</title>
     <style>
-        /* V34 樣式：保持 V33 穩定架構 */
+        /* V33 樣式：保持 V32 穩定架構 */
         body { background-color: #f0f0f0; font-family: sans-serif; margin: 0; padding: 10px; }
         * { box-sizing: border-box; }
         
@@ -285,7 +285,7 @@
         }
     }
 
-    // --- V34 修改：智能判斷成功或取消 ---
+    // --- V33 修改：使用 octet-stream 欺騙瀏覽器，強制單檔下載 ---
     async function exportDataSmart() {
         if(list.length === 0) { showMsg("沒資料可匯出"); return; }
         
@@ -301,41 +301,11 @@
         
         var fileName = "越南記帳_" + YYYY + MM + DD + "_" + HH + mm + "_" + ss + ".json";
 
-        // 1. 檢測是否支援檔案分享
-        var isShareSupported = false;
-        if (navigator.share && navigator.canShare) {
-            var testFile = new File([jsonStr], fileName, { type: "application/json" });
-            if (navigator.canShare({ files: [testFile] })) {
-                isShareSupported = true;
-            }
-        }
-
-        // 2. 支援分享 (iPhone/Android)
-        if (isShareSupported) {
-            try {
-                var file = new File([jsonStr], fileName, { type: "application/json" });
-                // 注意：只傳送 files，不傳送 title/text，避免產生文字檔
-                await navigator.share({
-                    files: [file]
-                });
-                
-                // 【V34修正】 程式執行到這裡代表 Promise 成功完成，也就是使用者選了儲存
-                showMsg("✅ 匯出成功！");
-                
-            } catch (err) {
-                // 【V34修正】 捕捉取消動作 (AbortError)
-                if (err.name === 'AbortError' || err.message.indexOf('Abort') !== -1) {
-                    showMsg("已取消匯出");
-                } else {
-                    console.log("分享出錯:", err);
-                    showMsg("匯出功能異常");
-                }
-            }
-            return;
-        }
-
-        // 3. 不支援分享 (電腦/舊手機)：改用下載模式
-        var blob = new Blob([jsonStr], {type: "application/json"});
+        // V33: 放棄 navigator.share，因為 iOS 總愛產生多餘的文字檔
+        // 改用強制二進位下載 (application/octet-stream)
+        // 這樣瀏覽器就不會嘗試「開啟」它，而是會彈出「下載」視窗
+        
+        var blob = new Blob([jsonStr], {type: "application/octet-stream"});
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
         a.href = url;
@@ -343,7 +313,8 @@
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        showMsg("✅ 匯出成功 (已下載)");
+        
+        showMsg("已觸發下載 (請在彈出視窗點選下載)");
     }
 
     function importData(input) {
