@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🇻🇳 越南記帳</title>
     <style>
-        /* V35 樣式：保持 V34 穩定架構 */
+        /* V36 即時顯示貨幣換算*/
         body { background-color: #f0f0f0; font-family: sans-serif; margin: 0; padding: 10px; }
         * { box-sizing: border-box; }
         
@@ -36,6 +36,17 @@
             padding: 10px; border: 2px dashed red; margin-bottom: 10px; 
             background: #fff; display: none; 
         }
+        
+        /* 即時換算文字樣式 */
+        #realtimeText {
+            color: blue;
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: -10px;
+            margin-bottom: 15px;
+            display: block;
+            min-height: 20px; /* 佔位防止跳動 */
+        }
     </style>
 </head>
 <body onload="init()">
@@ -63,14 +74,16 @@
         </select>
         <label>3. 品項</label> <input type="text" id="itemIn" placeholder="輸入項目...">
         
-        <label>4. 金額</label> 
-        <input type="number" id="amountIn" placeholder="0" inputmode="decimal">
-        
-        <label>5. 幣別</label> 
-        <select id="currencyIn">
+        <label>4. 幣別</label> 
+        <select id="currencyIn" onchange="updateRealtime()">
             <option value="VND">VND (越南盾)</option>
             <option value="TWD">TWD (台幣)</option>
         </select>
+
+        <label>5. 金額</label> 
+        <input type="number" id="amountIn" placeholder="0" inputmode="decimal" oninput="updateRealtime()">
+        
+        <div id="realtimeText"></div>
 
         <button id="addBtn" onclick="saveData()">＋ 確認儲存</button>
         <button id="cancelBtn" onclick="resetForm()" style="display:none; color:red; border-color:red; background:#fff;">取消修改</button>
@@ -110,15 +123,12 @@
     }
 
     function init() {
-        // --- V35 新增：自動填入當前日期 ---
-        // 取得今天的日期並轉成 YYYY-MM-DD 格式
         var today = new Date();
         var yyyy = today.getFullYear();
-        var mm = String(today.getMonth() + 1).padStart(2, '0'); // 月份是 0-11，所以要+1
+        var mm = String(today.getMonth() + 1).padStart(2, '0');
         var dd = String(today.getDate()).padStart(2, '0');
         var todayStr = yyyy + "-" + mm + "-" + dd;
         
-        // 設定到 input 欄位
         document.getElementById('dateIn').value = todayStr;
 
         var str = localStorage.getItem(KEY);
@@ -126,6 +136,35 @@
             try { list = JSON.parse(str); } catch(e){ list = []; }
         }
         render();
+        updateRealtime(); // 初始化時也跑一次
+    }
+
+    // --- V36 新增：即時換算邏輯 ---
+    function updateRealtime() {
+        var amtStr = document.getElementById('amountIn').value;
+        var curr = document.getElementById('currencyIn').value;
+        var display = document.getElementById('realtimeText');
+
+        if (!amtStr) {
+            display.innerText = "";
+            return;
+        }
+
+        var amt = parseFloat(amtStr);
+        if (isNaN(amt)) {
+            display.innerText = "";
+            return;
+        }
+
+        if (curr === 'TWD') {
+            // 如果輸入台幣，顯示等於多少越盾
+            var res = Math.round(amt * RATE);
+            display.innerText = "= " + res.toLocaleString() + " VND";
+        } else {
+            // 如果輸入越盾，顯示等於多少台幣
+            var res = Math.round(amt / RATE);
+            display.innerText = "= " + res.toLocaleString() + " TWD";
+        }
     }
 
     window.del = function(id) {
@@ -154,6 +193,10 @@
 
         document.getElementById('addBtn').innerText = "💾 儲存修改";
         document.getElementById('cancelBtn').style.display = "block";
+        
+        // 觸發即時計算
+        updateRealtime();
+        
         window.scrollTo(0,0);
         showMsg("✏️ 進入編輯模式");
     };
@@ -266,10 +309,12 @@
         document.getElementById('editId').value = "";
         document.getElementById('itemIn').value = "";
         document.getElementById('amountIn').value = "";
+        // 清除即時顯示
+        document.getElementById('realtimeText').innerText = "";
+        
         document.getElementById('addBtn').innerText = "＋ 確認儲存";
         document.getElementById('cancelBtn').style.display = "none";
         
-        // 重置表單後，也要記得把日期重設回今天
         var today = new Date();
         var yyyy = today.getFullYear();
         var mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -302,7 +347,6 @@
         }
     }
 
-    // --- V34 修改：智能判斷成功或取消 ---
     async function exportDataSmart() {
         if(list.length === 0) { showMsg("沒資料可匯出"); return; }
         
@@ -318,7 +362,6 @@
         
         var fileName = "越南記帳_" + YYYY + MM + DD + "_" + HH + mm + "_" + ss + ".json";
 
-        // 1. 檢測是否支援檔案分享
         var isShareSupported = false;
         if (navigator.share && navigator.canShare) {
             var testFile = new File([jsonStr], fileName, { type: "application/json" });
@@ -327,20 +370,14 @@
             }
         }
 
-        // 2. 支援分享 (iPhone/Android)
         if (isShareSupported) {
             try {
                 var file = new File([jsonStr], fileName, { type: "application/json" });
-                // 注意：只傳送 files，不傳送 title/text，避免產生文字檔
                 await navigator.share({
                     files: [file]
                 });
-                
-                // 【V34修正】 程式執行到這裡代表 Promise 成功完成，也就是使用者選了儲存
                 showMsg("✅ 匯出成功！");
-                
             } catch (err) {
-                // 【V34修正】 捕捉取消動作 (AbortError)
                 if (err.name === 'AbortError' || err.message.indexOf('Abort') !== -1) {
                     showMsg("已取消匯出");
                 } else {
@@ -351,7 +388,6 @@
             return;
         }
 
-        // 3. 不支援分享 (電腦/舊手機)：改用下載模式
         var blob = new Blob([jsonStr], {type: "application/json"});
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
