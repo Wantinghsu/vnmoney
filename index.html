@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🇻🇳 越南記帳</title>
     <style>
-        /* V45 樣式 */
+        /* V47 樣式：保持 V45/V46 穩定架構 */
         body { 
             background-color: #f0f0f0; 
             font-family: sans-serif; 
@@ -32,7 +32,7 @@
         button:active { background-color: #bbb; }
         #addBtn { background-color: #000; color: #fff; border: 1px solid #000; }
         
-        /* V45 新增：分頁按鈕區塊 */
+        /* 分頁按鈕區塊 */
         .tabs-container {
             display: flex;
             flex-wrap: wrap;
@@ -40,7 +40,7 @@
             margin-bottom: 5px;
         }
         .tab-btn {
-            flex: 1; /* 平均分配寬度 */
+            flex: 1;
             height: 35px;
             line-height: 33px;
             font-size: 14px;
@@ -50,7 +50,6 @@
             color: #333;
             min-width: 40px;
         }
-        /* 選中狀態 */
         .tab-btn.active {
             background-color: #000 !important;
             color: #fff !important;
@@ -193,8 +192,6 @@
     var list = [];
     var deleteConfirmState = {}; 
     var resetClickCount = 0;
-    
-    // V45 新增：當前篩選狀態
     var currentFilter = 'ALL';
 
     function showMsg(text) {
@@ -221,10 +218,15 @@
         updateRealtime();
     }
 
-    // V45 新增：切換篩選功能
     function setFilter(name) {
         currentFilter = name;
-        render(); // 重新渲染表格
+        render();
+        // 重置清空按鈕的狀態，避免文字殘留
+        var btn = document.getElementById('resetBtn');
+        btn.innerText = "⚠️ 清空資料";
+        btn.style.backgroundColor = "#fff";
+        btn.style.color = "red";
+        resetClickCount = 0;
     }
 
     function formatInputAndCalc(input) {
@@ -355,7 +357,6 @@
     function render() {
         deleteConfirmState = {};
         
-        // --- V45: 更新分頁按鈕狀態 ---
         var allTabs = document.querySelectorAll('.tab-btn');
         allTabs.forEach(function(btn){ btn.classList.remove('active'); });
         var activeBtn = document.getElementById('tab-' + currentFilter);
@@ -365,7 +366,6 @@
         var summary = document.getElementById('summary');
         
         tbody.innerHTML = "";
-        // 先排序
         list.sort(function(a,b){ return a.date < b.date ? 1 : -1 });
 
         var totalTWD = 0;
@@ -379,13 +379,10 @@
             var amt = parseFloat(row.amount) || 0;
             var val = (row.currency == 'VND') ? (amt / RATE) : amt;
             
-            // 統計永遠計算所有人，不受過濾影響
             totalTWD += val;
             if(map[row.member] === undefined) map[row.member] = 0;
             map[row.member] += val;
 
-            // --- V45: 列表過濾邏輯 ---
-            // 如果現在不是看全部，且這筆資料的付款人跟篩選的不一樣，就跳過不顯示
             if (currentFilter !== 'ALL' && row.member !== currentFilter) {
                 continue;
             }
@@ -418,7 +415,6 @@
         }
         tbody.innerHTML = tableHtml;
 
-        // V45: 如果過濾後沒有資料
         if (tableHtml === "") {
             tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding:20px; color:#999;'>此人無消費紀錄</td></tr>";
         }
@@ -465,10 +461,14 @@
         document.getElementById('dateIn').value = yyyy + "-" + mm + "-" + dd;
     }
 
+    // --- V47 修改：智慧清空功能 ---
     function hardResetClick() {
         var btn = document.getElementById('resetBtn');
+        var targetName = (currentFilter === 'ALL') ? "所有" : currentFilter;
+
         if(resetClickCount === 0) {
-            btn.innerText = "🛑 確定清空？";
+            // 第一次點擊：提示要清空誰
+            btn.innerText = "🛑 確定清空【" + targetName + "】資料？";
             btn.style.backgroundColor = "red";
             btn.style.color = "white";
             resetClickCount = 1;
@@ -479,10 +479,25 @@
                 btn.style.color = "red";
             }, 3000);
         } else {
-            localStorage.removeItem(KEY);
-            list = [];
-            render();
-            showMsg("💥 已清空");
+            // 第二次點擊：執行清空
+            if (currentFilter === 'ALL') {
+                // 如果是全部，直接清空整個列表
+                list = [];
+            } else {
+                // 如果是特定人，保留「非此人」的資料
+                var keptList = [];
+                for(var i=0; i<list.length; i++) {
+                    if (list[i].member !== currentFilter) {
+                        keptList.push(list[i]);
+                    }
+                }
+                list = keptList;
+            }
+            
+            saveToLocal();
+            showMsg("💥 已清空【" + targetName + "】資料");
+            
+            // 恢復按鈕狀態
             resetClickCount = 0;
             btn.innerText = "⚠️ 清空資料";
             btn.style.backgroundColor = "#fff";
