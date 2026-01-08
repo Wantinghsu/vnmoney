@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🇻🇳 越南記帳</title>
     <style>
-        /* V51 樣式 */
+        /* V54 樣式：保持 V53 穩定架構 */
         body { 
             background-color: #f0f0f0; 
             font-family: sans-serif; 
@@ -31,41 +31,34 @@
         button { background-color: #ddd; font-weight: bold; cursor: pointer; border-width: 1px; }
         button:active { background-color: #bbb; }
         
-        /* 儲存按鈕樣式 */
         #addBtn { background-color: #000; color: #fff; border: 1px solid #000; transition: all 0.2s; }
         
-        /* V51 回歸：水平整合控制列 */
         .control-bar {
             display: flex;
-            justify-content: space-between; /* 左右推開 */
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
             height: 35px;
         }
 
-        /* V51 回歸：狀態提示框 (左側) */
+        /* 狀態提示框 */
         #statusMsg { 
-            flex-grow: 1; /* 佔據左側空間 */
+            flex-grow: 1;
             margin-right: 10px;
-            
-            color: red; 
+            color: blue; 
             font-weight: bold; 
-            text-align: center; /* 文字置中 */
+            text-align: center;
             line-height: 33px;
-            border: 1px dashed red; 
+            border: 1px dashed blue; 
             background: #fff; 
             font-size: 13px;
-            
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            
-            /* 關鍵：預留空間，避免跳動 */
             visibility: hidden; 
             height: 35px;
         }
 
-        /* V51 回歸：按鈕群組 (右側) */
         .action-btns {
             flex-shrink: 0; 
             display: flex;
@@ -238,11 +231,20 @@
     var deleteConfirmState = {}; 
     var resetClickCount = 0;
     var currentFilter = 'ALL';
+    var btnResetTimer = null;
 
-    // V51: 使用 visibility 控制顯示，保持位置不跳動
-    function showMsg(text) {
+    function showMsg(text, isError) {
         var el = document.getElementById('statusMsg');
         el.innerText = text;
+        
+        if (isError) {
+            el.style.color = "red";
+            el.style.borderColor = "red";
+        } else {
+            el.style.color = "blue";
+            el.style.borderColor = "blue";
+        }
+        
         el.style.visibility = 'visible'; 
         setTimeout(function(){ 
             el.style.visibility = 'hidden'; 
@@ -335,7 +337,7 @@
         
         delete deleteConfirmState[id];
         saveToLocal();
-        showMsg("🗑️ 資料已刪除");
+        showMsg("🗑️ 資料已刪除", true);
     };
 
     window.edit = function(id) {
@@ -345,6 +347,8 @@
         }
         if(!t) return;
 
+        if(btnResetTimer) clearTimeout(btnResetTimer);
+
         document.getElementById('editId').value = t.id;
         document.getElementById('dateIn').value = t.date;
         document.getElementById('memberIn').value = t.member;
@@ -352,66 +356,74 @@
         document.getElementById('amountIn').value = parseFloat(t.amount).toLocaleString('en-US');
         document.getElementById('currencyIn').value = t.currency;
 
-        document.getElementById('addBtn').innerText = "💾 儲存修改";
+        var btn = document.getElementById('addBtn');
+        btn.innerText = "💾 儲存";
+        btn.style.backgroundColor = "#000";
+        btn.style.borderColor = "#000";
+        
         document.getElementById('cancelBtn').style.display = "block";
         
         updateRealtime();
         window.scrollTo(0,0);
-        showMsg("✏️ 進入編輯模式");
+        showMsg("✏️ 進入編輯模式", false);
     };
 
     function saveData() {
-        var id = document.getElementById('editId').value;
-        var d = document.getElementById('dateIn').value;
-        var m = document.getElementById('memberIn').value;
-        var i = document.getElementById('itemIn').value;
-        var numA = getRawAmount();
-        var c = document.getElementById('currencyIn').value;
+        try {
+            var id = document.getElementById('editId').value;
+            var d = document.getElementById('dateIn').value;
+            var m = document.getElementById('memberIn').value;
+            var i = document.getElementById('itemIn').value;
+            var numA = getRawAmount();
+            var c = document.getElementById('currencyIn').value;
 
-        if(numA === 0) { showMsg("❌ 金額必填！"); return; }
-        if(!i) i = "(未填)";
+            if(numA === 0) { showMsg("❌ 金額必填！", true); return; }
+            if(!i) i = "(未填)";
 
-        var obj = {
-            "id": id ? String(id) : ('ID' + new Date().getTime()),
-            "date": d,
-            "member": m,
-            "item": i,
-            "amount": numA,
-            "currency": c
-        };
+            var obj = {
+                "id": id ? String(id) : ('ID' + new Date().getTime()),
+                "date": d,
+                "member": m,
+                "item": i,
+                "amount": numA,
+                "currency": c
+            };
 
-        if(id) {
-            var idx = -1;
-            for(var k=0; k<list.length; k++) {
-                if(String(list[k].id) === String(id)) idx = k;
+            if(id) {
+                var idx = -1;
+                for(var k=0; k<list.length; k++) {
+                    if(String(list[k].id) === String(id)) idx = k;
+                }
+                if(idx !== -1) list[idx] = obj;
+                else list.push(obj);
+            } else {
+                list.push(obj);
             }
-            if(idx !== -1) list[idx] = obj;
-            else list.push(obj);
-        } else {
-            list.push(obj);
-        }
-        
-        // V51: 儲存後強制跳回全部，防止使用者誤以為沒存到
-        if (currentFilter !== 'ALL') {
-             currentFilter = 'ALL';
-        }
+            
+            if (currentFilter !== 'ALL') {
+                 currentFilter = 'ALL';
+            }
 
-        resetForm();
-        saveToLocal();
-        
-        // V51: 雙重回饋 - 1. 按鈕變色
-        var btn = document.getElementById('addBtn');
-        btn.innerText = "✅ 已儲存";
-        btn.style.backgroundColor = "#28a745"; 
-        btn.style.borderColor = "#28a745";
-        setTimeout(function(){
-            btn.innerText = "＋ 儲存";
-            btn.style.backgroundColor = "#000";
-            btn.style.borderColor = "#000";
-        }, 1500);
-        
-        // V51: 雙重回饋 - 2. 頂部狀態列也顯示 (如果想要的話，不然可以註解掉)
-        // showMsg("✅ 儲存成功"); 
+            resetForm();
+            saveToLocal();
+            
+            showMsg("✅ 儲存成功！", false);
+            
+            var btn = document.getElementById('addBtn');
+            btn.innerText = "✅ 已儲存";
+            btn.style.backgroundColor = "#28a745"; 
+            btn.style.borderColor = "#28a745";
+            
+            if(btnResetTimer) clearTimeout(btnResetTimer);
+            btnResetTimer = setTimeout(function(){
+                btn.innerText = "＋ 儲存";
+                btn.style.backgroundColor = "#000";
+                btn.style.borderColor = "#000";
+            }, 1500);
+
+        } catch (err) {
+            alert("程式發生錯誤：" + err);
+        }
     }
 
     function saveToLocal() {
@@ -555,7 +567,7 @@
             }
             
             saveToLocal();
-            showMsg("💥 已清空【" + targetName + "】資料");
+            showMsg("💥 已清空【" + targetName + "】資料", true);
             
             resetClickCount = 0;
             btn.innerText = "⚠️ 清空資料";
@@ -565,7 +577,7 @@
     }
 
     async function exportDataSmart() {
-        if(list.length === 0) { showMsg("沒資料"); return; }
+        if(list.length === 0) { showMsg("沒資料", true); return; }
         var jsonStr = JSON.stringify(list);
         var now = new Date();
         var YYYY = now.getFullYear();
@@ -586,12 +598,12 @@
             try {
                 var file = new File([jsonStr], fileName, { type: "application/json" });
                 await navigator.share({ files: [file] });
-                showMsg("✅ 匯出成功！");
+                showMsg("✅ 匯出成功！", false);
             } catch (err) {
                 if (err.name === 'AbortError' || err.message.indexOf('Abort') !== -1) {
-                    showMsg("已取消匯出");
+                    showMsg("已取消匯出", true);
                 } else {
-                    console.log(err); showMsg("匯出功能異常");
+                    console.log(err); showMsg("匯出功能異常", true);
                 }
             }
             return;
@@ -605,7 +617,7 @@
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        showMsg("✅ 匯出成功 (已下載)");
+        showMsg("✅ 匯出成功 (已下載)", false);
     }
 
     function importData(input) {
@@ -616,21 +628,36 @@
             try {
                 var arr = JSON.parse(e.target.result);
                 if(Array.isArray(arr)) {
-                    var count = 0;
-                    var currentIds = [];
-                    for(var k=0; k<list.length; k++) currentIds.push(String(list[k].id));
+                    var addedCount = 0;
+                    var updatedCount = 0;
+                    var idMap = {};
+                    for(var k=0; k<list.length; k++) {
+                        idMap[String(list[k].id)] = k;
+                    }
+
                     for(var i=0; i<arr.length; i++) {
                         var newItem = arr[i];
-                        if(currentIds.indexOf(String(newItem.id)) === -1) {
+                        var newIdStr = String(newItem.id);
+                        if(idMap[newIdStr] !== undefined) {
+                            var idx = idMap[newIdStr];
+                            list[idx] = newItem;
+                            updatedCount++;
+                        } else {
                             list.push(newItem);
-                            count++;
+                            idMap[newIdStr] = list.length - 1;
+                            addedCount++;
                         }
                     }
+                    
                     saveToLocal();
-                    if(count > 0) showMsg("匯入 " + count + " 筆");
-                    else showMsg("無新資料");
+                    if(addedCount > 0 || updatedCount > 0) {
+                        // V54: 語意優化
+                        showMsg("匯入成功 (新增:" + addedCount + ", 覆蓋:" + updatedCount + ")", false);
+                    } else {
+                        showMsg("無資料變動", true);
+                    }
                 }
-            } catch(err){ showMsg("檔案錯誤"); }
+            } catch(err){ showMsg("檔案錯誤", true); }
             input.value = "";
         };
         r.readAsText(f);
