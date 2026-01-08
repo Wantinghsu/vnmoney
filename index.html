@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🇻🇳 越南記帳</title>
     <style>
-        /* V46 樣式 */
+        /* V45 樣式 */
         body { 
             background-color: #f0f0f0; 
             font-family: sans-serif; 
             margin: 0; 
             padding: 5px; 
-            /* 關鍵指令：允許兩指縮放，但禁止「雙擊縮放」 */
             touch-action: manipulation; 
         }
         * { box-sizing: border-box; }
@@ -25,8 +24,7 @@
             width: 100%; height: 40px; font-size: 16px; margin-bottom: 10px;
             border: 1px solid #000; border-radius: 0; background-color: #fff; color: #000;
             display: block; -webkit-appearance: none;
-            /* 針對互動元件，禁止雙擊放大，防止畫面亂跳 */
-            touch-action: manipulation; 
+            touch-action: manipulation;
         }
         input[type="date"] { line-height: 40px; }
         
@@ -34,6 +32,31 @@
         button:active { background-color: #bbb; }
         #addBtn { background-color: #000; color: #fff; border: 1px solid #000; }
         
+        /* V45 新增：分頁按鈕區塊 */
+        .tabs-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        .tab-btn {
+            flex: 1; /* 平均分配寬度 */
+            height: 35px;
+            line-height: 33px;
+            font-size: 14px;
+            padding: 0;
+            border: 1px solid #999;
+            background-color: #fff;
+            color: #333;
+            min-width: 40px;
+        }
+        /* 選中狀態 */
+        .tab-btn.active {
+            background-color: #000 !important;
+            color: #fff !important;
+            border-color: #000;
+        }
+
         #listTable { 
             width: 100%; 
             border-collapse: collapse; 
@@ -139,6 +162,16 @@
     <div id="summary">計算中...</div>
 
     <h3>📝 明細列表</h3>
+    
+    <div class="tabs-container">
+        <button class="tab-btn active" onclick="setFilter('ALL')" id="tab-ALL">全部</button>
+        <button class="tab-btn" onclick="setFilter('榮')" id="tab-榮">榮</button>
+        <button class="tab-btn" onclick="setFilter('如')" id="tab-如">如</button>
+        <button class="tab-btn" onclick="setFilter('翔')" id="tab-翔">翔</button>
+        <button class="tab-btn" onclick="setFilter('庭')" id="tab-庭">庭</button>
+        <button class="tab-btn" onclick="setFilter('中')" id="tab-中">中</button>
+    </div>
+
     <table id="listTable">
         <thead>
             <tr>
@@ -160,6 +193,9 @@
     var list = [];
     var deleteConfirmState = {}; 
     var resetClickCount = 0;
+    
+    // V45 新增：當前篩選狀態
+    var currentFilter = 'ALL';
 
     function showMsg(text) {
         var el = document.getElementById('statusMsg');
@@ -183,6 +219,12 @@
         }
         render();
         updateRealtime();
+    }
+
+    // V45 新增：切換篩選功能
+    function setFilter(name) {
+        currentFilter = name;
+        render(); // 重新渲染表格
     }
 
     function formatInputAndCalc(input) {
@@ -222,11 +264,9 @@
     window.del = function(id, btn) {
         if (!deleteConfirmState[id]) {
             deleteConfirmState[id] = true;
-            
             if(btn) {
                 btn.style.backgroundColor = "red";
                 btn.style.color = "white";
-                
                 setTimeout(function() {
                     deleteConfirmState[id] = false;
                     if(btn) {
@@ -315,10 +355,17 @@
     function render() {
         deleteConfirmState = {};
         
+        // --- V45: 更新分頁按鈕狀態 ---
+        var allTabs = document.querySelectorAll('.tab-btn');
+        allTabs.forEach(function(btn){ btn.classList.remove('active'); });
+        var activeBtn = document.getElementById('tab-' + currentFilter);
+        if(activeBtn) activeBtn.classList.add('active');
+
         var tbody = document.querySelector('#listTable tbody');
         var summary = document.getElementById('summary');
         
         tbody.innerHTML = "";
+        // 先排序
         list.sort(function(a,b){ return a.date < b.date ? 1 : -1 });
 
         var totalTWD = 0;
@@ -332,9 +379,16 @@
             var amt = parseFloat(row.amount) || 0;
             var val = (row.currency == 'VND') ? (amt / RATE) : amt;
             
+            // 統計永遠計算所有人，不受過濾影響
             totalTWD += val;
             if(map[row.member] === undefined) map[row.member] = 0;
             map[row.member] += val;
+
+            // --- V45: 列表過濾邏輯 ---
+            // 如果現在不是看全部，且這筆資料的付款人跟篩選的不一樣，就跳過不顯示
+            if (currentFilter !== 'ALL' && row.member !== currentFilter) {
+                continue;
+            }
 
             var convertText = "";
             if (row.currency === 'TWD') {
@@ -363,6 +417,11 @@
             tableHtml += "</tr>";
         }
         tbody.innerHTML = tableHtml;
+
+        // V45: 如果過濾後沒有資料
+        if (tableHtml === "") {
+            tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding:20px; color:#999;'>此人無消費紀錄</td></tr>";
+        }
 
         var statsTable = "<table class='stats-table'>";
         for(var name in map) {
