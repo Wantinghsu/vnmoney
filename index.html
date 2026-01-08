@@ -5,52 +5,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🇻🇳 越南記帳</title>
     <style>
-        /* V37 樣式：保持 V36 穩定架構 */
-        body { background-color: #f0f0f0; font-family: sans-serif; margin: 0; padding: 10px; }
+        /* V41 樣式：針對總計欄位進行對齊優化 */
+        body { background-color: #f0f0f0; font-family: sans-serif; margin: 0; padding: 5px; }
         * { box-sizing: border-box; }
         
-        h3 { border-bottom: 2px solid #333; padding-bottom: 5px; margin-top: 20px; color: #000; }
-        .input-group { background: #fff; padding: 15px; border: 2px solid #000; margin-bottom: 20px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; color: #000; font-size: 16px; }
+        h3 { border-bottom: 2px solid #333; padding-bottom: 5px; margin-top: 15px; color: #000; font-size: 18px;}
+        
+        .input-group { background: #fff; padding: 10px; border: 2px solid #000; margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 3px; color: #000; font-size: 14px; }
         
         input, select, button {
-            width: 100%; height: 45px; font-size: 16px; margin-bottom: 15px;
+            width: 100%; height: 40px; font-size: 16px; margin-bottom: 10px;
             border: 1px solid #000; border-radius: 0; background-color: #fff; color: #000;
             display: block; -webkit-appearance: none;
         }
-        input[type="date"] { line-height: 45px; }
+        input[type="date"] { line-height: 40px; }
         
-        button { background-color: #ddd; font-weight: bold; cursor: pointer; border-width: 2px; }
+        button { background-color: #ddd; font-weight: bold; cursor: pointer; border-width: 1px; }
         button:active { background-color: #bbb; }
-        #addBtn { background-color: #000; color: #fff; }
+        #addBtn { background-color: #000; color: #fff; border: 1px solid #000; }
         
-        table { width: 100%; border-collapse: collapse; background: #fff; border: 2px solid #000; }
-        th, td { border: 1px solid #000; padding: 10px; text-align: left; color: #000; }
-        th { background-color: #eee; }
+        /* 明細列表表格 */
+        #listTable { 
+            width: 100%; 
+            border-collapse: collapse; 
+            background: #fff; 
+            border: 1px solid #000; 
+            font-size: 14px; 
+            table-layout: fixed; 
+        }
         
-        #summary { background: #fff; border: 2px solid #000; padding: 10px; line-height: 1.8; font-size: 16px; color: #000; }
+        #listTable thead th {
+            background-color: #eee;
+            border-bottom: 1px solid #000;
+            padding: 8px 4px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .col-date { width: 15%; text-align: center; color: #666; font-size: 12px; font-weight: bold; vertical-align: top; padding-top: 12px; }
+        .col-detail { width: 60%; padding: 8px 4px; vertical-align: middle; }
+        .col-op { width: 25%; text-align: center; vertical-align: middle; padding: 0 2px; }
+
+        #listTable td { border-bottom: 1px solid #ddd; }
+
+        .detail-line1 { font-size: 15px; font-weight: bold; color: #000; margin-bottom: 2px; }
+        .detail-line2 { font-size: 13px; }
+        .money-main { color: blue; font-weight: bold; }
+        .money-sub { color: #666; font-size: 11px; }
+
+        .btn-small {
+            width: auto; height: 32px; line-height: 30px;
+            font-size: 14px; padding: 0 8px; margin: 0 2px;
+            border: 1px solid #999; background: #eee !important;
+            display: inline-block; color: #000;
+        }
+        .btn-del { background: #fff !important; border: 1px solid red; color: red; }
         
+        /* V41: 統計區塊樣式 */
+        #summary { background: #fff; border: 2px solid #000; padding: 10px; font-size: 14px; color: #000; }
+        
+        /* 統計表格專用樣式 */
+        .stats-table { width: 100%; border-collapse: collapse; }
+        .stats-table td { border: none; padding: 4px 0; vertical-align: bottom; }
+        
+        /* 定義統計表格的欄寬，確保上下對齊 */
+        .st-name { text-align: left; width: 15%; font-weight: bold; white-space: nowrap; }
+        .st-twd { text-align: right; width: 35%; font-weight: bold; }
+        .st-vnd { text-align: right; width: 50%; color: #666; font-size: 13px; }
+
         #statusMsg { 
             color: red; font-weight: bold; text-align: center; 
-            padding: 10px; border: 2px dashed red; margin-bottom: 10px; 
-            background: #fff; display: none; 
+            padding: 5px; border: 1px dashed red; margin-bottom: 10px; 
+            background: #fff; display: none; font-size: 14px;
         }
         
         #realtimeText {
-            color: blue; font-weight: bold; font-size: 16px; margin-top: -10px; margin-bottom: 15px; display: block; min-height: 20px;
+            color: blue; font-weight: bold; font-size: 14px; margin-top: -8px; margin-bottom: 10px; display: block; min-height: 18px;
         }
     </style>
 </head>
 <body onload="init()">
 
-    <h2 style="text-align:center;">🇻🇳 越南記帳 V1</h2>
+    <h2 style="text-align:center; margin:10px 0;">🇻🇳 越南記帳</h2>
 
     <div id="statusMsg">系統準備就緒</div>
 
     <div style="margin-bottom: 10px; text-align:right;">
         <input type="file" id="fileIn" onchange="importData(this)" style="display:none">
-        <button onclick="document.getElementById('fileIn').click()" style="width:auto; display:inline-block; padding:0 10px;">匯入舊檔</button>
-        <button onclick="exportDataSmart()" style="width:auto; display:inline-block; padding:0 10px; background:#e0e0e0;">📤 匯出備份</button>
+        <button onclick="document.getElementById('fileIn').click()" style="width:auto; display:inline-block; padding:0 10px; height:35px; line-height:35px;">匯入</button>
+        <button onclick="exportDataSmart()" style="width:auto; display:inline-block; padding:0 10px; height:35px; line-height:35px; background:#e0e0e0;">備份</button>
     </div>
 
     <div class="input-group">
@@ -74,29 +118,29 @@
 
         <label>5. 金額</label> 
         <input type="text" id="amountIn" placeholder="0" inputmode="decimal" onkeyup="formatInputAndCalc(this)">
-        
         <div id="realtimeText"></div>
 
-        <button id="addBtn" onclick="saveData()">＋ 確認儲存</button>
-        <button id="cancelBtn" onclick="resetForm()" style="display:none; color:red; border-color:red; background:#fff;">取消修改</button>
+        <button id="addBtn" onclick="saveData()">＋ 儲存</button>
+        <button id="cancelBtn" onclick="resetForm()" style="display:none; color:red; border-color:red; background:#fff;">取消</button>
     </div>
 
-    <h3>📊 統計結果 (匯率TWD:VND = 1:835.63)</h3>
+    <h3>📊 統計結果 (TWD:VND=1:835.63)</h3>
     <div id="summary">計算中...</div>
 
     <h3>📝 明細列表</h3>
     <table id="listTable">
         <thead>
             <tr>
-                <th>內容</th>
-                <th width="80">操作</th>
+                <th class="col-date">日期</th>
+                <th class="col-detail">內容 / 金額</th>
+                <th class="col-op">操作</th>
             </tr>
         </thead>
         <tbody></tbody>
     </table>
 
     <div style="margin-top: 30px; text-align: center;">
-        <button id="resetBtn" onclick="hardResetClick()" style="background:#fff; color:red; border:1px dashed red;">⚠️ 清空所有資料</button>
+        <button id="resetBtn" onclick="hardResetClick()" style="background:#fff; color:red; border:1px dashed red; height:35px;">⚠️ 清空資料</button>
     </div>
 
 <script>
@@ -129,39 +173,22 @@
         updateRealtime();
     }
 
-    // --- V37 新增：千分位格式化與計算 ---
     function formatInputAndCalc(input) {
-        // 1. 先把逗號拿掉，取得純數字字串
         var rawValue = input.value.replace(/,/g, '');
-        
-        // 2. 如果是空值，就不處理
-        if (!rawValue) {
-            updateRealtime();
-            return;
-        }
-
-        // 3. 檢查是否為合法數字
+        if (!rawValue) { updateRealtime(); return; }
         var num = parseFloat(rawValue);
         if (isNaN(num)) return;
-
-        // 4. 重新格式化為千分位 (toLocaleString 會自動加逗號)
-        // 使用 en-US 確保是用逗號分隔
         input.value = num.toLocaleString('en-US');
-
-        // 5. 觸發換算
         updateRealtime();
     }
 
-    // 取得去除逗號後的真實數字
     function getRawAmount() {
         var val = document.getElementById('amountIn').value;
         if(!val) return 0;
-        // 把逗號刪掉再轉數字
         return parseFloat(val.replace(/,/g, ''));
     }
 
     function updateRealtime() {
-        // V37 修改：改用 getRawAmount 取得正確數值
         var amt = getRawAmount();
         var curr = document.getElementById('currencyIn').value;
         var display = document.getElementById('realtimeText');
@@ -201,17 +228,13 @@
         document.getElementById('dateIn').value = t.date;
         document.getElementById('memberIn').value = t.member;
         document.getElementById('itemIn').value = t.item;
-        
-        // V37 修改：編輯時，載入金額要自動加上逗號
         document.getElementById('amountIn').value = parseFloat(t.amount).toLocaleString('en-US');
-        
         document.getElementById('currencyIn').value = t.currency;
 
-        document.getElementById('addBtn').innerText = "💾 儲存修改";
+        document.getElementById('addBtn').innerText = "💾 儲存";
         document.getElementById('cancelBtn').style.display = "block";
         
         updateRealtime();
-        
         window.scrollTo(0,0);
         showMsg("✏️ 進入編輯模式");
     };
@@ -221,10 +244,7 @@
         var d = document.getElementById('dateIn').value;
         var m = document.getElementById('memberIn').value;
         var i = document.getElementById('itemIn').value;
-        
-        // V37 修改：使用 getRawAmount 取得去除逗號後的數字
         var numA = getRawAmount();
-        
         var c = document.getElementById('currencyIn').value;
 
         if(numA === 0) { showMsg("❌ 金額必填！"); return; }
@@ -235,7 +255,7 @@
             "date": d,
             "member": m,
             "item": i,
-            "amount": numA, // 存入資料庫的是純數字
+            "amount": numA,
             "currency": c
         };
 
@@ -285,39 +305,62 @@
             var convertText = "";
             if (row.currency === 'TWD') {
                 var vndVal = Math.round(amt * RATE);
-                convertText = " ( = " + vndVal.toLocaleString() + " VND)";
+                convertText = " (=" + vndVal.toLocaleString() + " VND)";
             } else {
                 var twdVal = Math.round(amt / RATE);
-                convertText = " ( = " + twdVal.toLocaleString() + " TWD)";
+                convertText = " (=" + twdVal.toLocaleString() + " TWD)";
             }
 
+            var shortDate = row.date.substring(5);
+
             tableHtml += "<tr>";
-            tableHtml += "<td><b>" + row.date + "</b><br>[" + row.member + "] " + row.item + "<br>";
-            tableHtml += "<span style='color:blue'>" + amt.toLocaleString() + " " + row.currency + "</span>";
-            tableHtml += "<span style='color:black; font-weight:normal;'>" + convertText + "</span>"; 
+            tableHtml += "<td class='col-date'>" + shortDate + "</td>";
+            tableHtml += "<td class='col-detail'>";
+            tableHtml += "<div class='detail-line1'>[" + row.member + "] " + row.item + "</div>";
+            tableHtml += "<div class='detail-line2'>";
+            tableHtml += "<span class='money-main'>" + amt.toLocaleString() + " " + row.currency + "</span>";
+            tableHtml += "<span class='money-sub'>" + convertText + "</span>";
+            tableHtml += "</div>";
             tableHtml += "</td>";
-            
-            tableHtml += "<td>";
-            tableHtml += "<button onclick=\"window.edit('" + row.id + "')\" style='margin-bottom:5px;'>改</button>";
-            tableHtml += "<button onclick=\"window.del('" + row.id + "')\" style='background:#fff; color:red; border-color:red;'>刪</button>";
+            tableHtml += "<td class='col-op'>";
+            tableHtml += "<button class='btn-small' onclick=\"window.edit('" + row.id + "')\">改</button>";
+            tableHtml += "<button class='btn-small btn-del' onclick=\"window.del('" + row.id + "')\">刪</button>";
             tableHtml += "</td>";
             tableHtml += "</tr>";
         }
         tbody.innerHTML = tableHtml;
 
-        var htmlStats = "";
+        // --- V41 修改：統計表格完整對齊邏輯 ---
+        var statsTable = "<table class='stats-table'>";
+        
+        // 1. 各人明細
         for(var name in map) {
             var rawTWD = map[name];
             var displayTWD = Math.round(rawTWD);
             var displayVND = Math.round(rawTWD * RATE);
-            htmlStats += "<b>" + name + "</b>: " + displayTWD.toLocaleString() + " 台幣 (" + displayVND.toLocaleString() + " 越盾)<br>";
+            
+            statsTable += "<tr>";
+            statsTable += "<td class='st-name'>" + name + ":</td>";
+            statsTable += "<td class='st-twd'>" + displayTWD.toLocaleString() + " TWD</td>";
+            statsTable += "<td class='st-vnd'>(" + displayVND.toLocaleString() + " VND)</td>";
+            statsTable += "</tr>";
         }
-        var grandVND = Math.round(totalTWD * RATE);
-        htmlStats += "<hr style='border:1px solid #000'>";
-        htmlStats += "<div style='text-align:center; font-size:18px;'><b>總計: " + Math.round(totalTWD).toLocaleString() + " TWD</b><br>";
-        htmlStats += "<small>(" + grandVND.toLocaleString() + " VND)</small></div>";
 
-        summary.innerHTML = htmlStats;
+        // 2. 總計 (加入同一張表格，確保欄位寬度一致)
+        var grandVND = Math.round(totalTWD * RATE);
+        
+        // 插入一條分隔線行
+        statsTable += "<tr style='border-top: 1px solid #000;'>"; 
+        
+        // 總計資料行
+        statsTable += "<td class='st-name' style='padding-top:8px;'>總計:</td>";
+        statsTable += "<td class='st-twd' style='padding-top:8px; color:blue; font-size:15px;'>" + Math.round(totalTWD).toLocaleString() + " TWD</td>";
+        statsTable += "<td class='st-vnd' style='padding-top:8px;'>(" + grandVND.toLocaleString() + " VND)</td>";
+        statsTable += "</tr>";
+        
+        statsTable += "</table>";
+
+        summary.innerHTML = statsTable;
     }
 
     function resetForm() {
@@ -326,7 +369,7 @@
         document.getElementById('amountIn').value = "";
         document.getElementById('realtimeText').innerText = "";
         
-        document.getElementById('addBtn').innerText = "＋ 確認儲存";
+        document.getElementById('addBtn').innerText = "＋ 儲存";
         document.getElementById('cancelBtn').style.display = "none";
         
         var today = new Date();
@@ -339,13 +382,13 @@
     function hardResetClick() {
         var btn = document.getElementById('resetBtn');
         if(resetClickCount === 0) {
-            btn.innerText = "🛑 再按一次確定刪除！";
+            btn.innerText = "🛑 確定清空？";
             btn.style.backgroundColor = "red";
             btn.style.color = "white";
             resetClickCount = 1;
             setTimeout(function(){
                 resetClickCount = 0;
-                btn.innerText = "⚠️ 清空所有資料";
+                btn.innerText = "⚠️ 清空資料";
                 btn.style.backgroundColor = "#fff";
                 btn.style.color = "red";
             }, 3000);
@@ -353,19 +396,17 @@
             localStorage.removeItem(KEY);
             list = [];
             render();
-            showMsg("💥 資料已全部清空");
+            showMsg("💥 已清空");
             resetClickCount = 0;
-            btn.innerText = "⚠️ 清空所有資料";
+            btn.innerText = "⚠️ 清空資料";
             btn.style.backgroundColor = "#fff";
             btn.style.color = "red";
         }
     }
 
     async function exportDataSmart() {
-        if(list.length === 0) { showMsg("沒資料可匯出"); return; }
-        
+        if(list.length === 0) { showMsg("沒資料"); return; }
         var jsonStr = JSON.stringify(list);
-        
         var now = new Date();
         var YYYY = now.getFullYear();
         var MM = String(now.getMonth() + 1).padStart(2, '0');
@@ -373,36 +414,30 @@
         var HH = String(now.getHours()).padStart(2, '0');
         var mm = String(now.getMinutes()).padStart(2, '0');
         var ss = String(now.getSeconds()).padStart(2, '0');
-        
         var fileName = "越南記帳_" + YYYY + MM + DD + "_" + HH + mm + "_" + ss + ".json";
 
         var isShareSupported = false;
         if (navigator.share && navigator.canShare) {
             var testFile = new File([jsonStr], fileName, { type: "application/json" });
-            if (navigator.canShare({ files: [testFile] })) {
-                isShareSupported = true;
-            }
+            if (navigator.canShare({ files: [testFile] })) { isShareSupported = true; }
         }
 
         if (isShareSupported) {
             try {
                 var file = new File([jsonStr], fileName, { type: "application/json" });
-                await navigator.share({
-                    files: [file]
-                });
+                await navigator.share({ files: [file] });
                 showMsg("✅ 匯出成功！");
             } catch (err) {
                 if (err.name === 'AbortError' || err.message.indexOf('Abort') !== -1) {
                     showMsg("已取消匯出");
                 } else {
-                    console.log("分享出錯:", err);
-                    showMsg("匯出功能異常");
+                    console.log(err); showMsg("匯出功能異常");
                 }
             }
             return;
         }
 
-        var blob = new Blob([jsonStr], {type: "application/json"});
+        var blob = new Blob([jsonStr], {type: "application/octet-stream"});
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
         a.href = url;
@@ -423,10 +458,7 @@
                 if(Array.isArray(arr)) {
                     var count = 0;
                     var currentIds = [];
-                    for(var k=0; k<list.length; k++) {
-                        currentIds.push(String(list[k].id));
-                    }
-
+                    for(var k=0; k<list.length; k++) currentIds.push(String(list[k].id));
                     for(var i=0; i<arr.length; i++) {
                         var newItem = arr[i];
                         if(currentIds.indexOf(String(newItem.id)) === -1) {
@@ -434,13 +466,9 @@
                             count++;
                         }
                     }
-                    
                     saveToLocal();
-                    if(count > 0) {
-                        showMsg("匯入成功！新增了 " + count + " 筆資料");
-                    } else {
-                        showMsg("匯入完成，但所有資料已存在 (無新增)");
-                    }
+                    if(count > 0) showMsg("匯入 " + count + " 筆");
+                    else showMsg("無新資料");
                 }
             } catch(err){ showMsg("檔案錯誤"); }
             input.value = "";
