@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🇻🇳 越南記帳</title>
+    <title>🇻🇳 越南記帳 V51 (完美復刻版)</title>
     <style>
-        /* V49 樣式 */
+        /* V51 樣式 */
         body { 
             background-color: #f0f0f0; 
             font-family: sans-serif; 
@@ -30,53 +30,55 @@
         
         button { background-color: #ddd; font-weight: bold; cursor: pointer; border-width: 1px; }
         button:active { background-color: #bbb; }
-        #addBtn { background-color: #000; color: #fff; border: 1px solid #000; }
         
-        /* V49 新增：頂部控制列 (水平排列) */
+        /* 儲存按鈕樣式 */
+        #addBtn { background-color: #000; color: #fff; border: 1px solid #000; transition: all 0.2s; }
+        
+        /* V51 回歸：水平整合控制列 */
         .control-bar {
             display: flex;
-            justify-content: space-between; /* 左右分開 */
-            align-items: center; /* 垂直置中 */
+            justify-content: space-between; /* 左右推開 */
+            align-items: center;
             margin-bottom: 10px;
-            height: 35px; /* 固定高度 */
+            height: 35px;
         }
 
-        /* V49 修改：狀態提示框 (左側) */
+        /* V51 回歸：狀態提示框 (左側) */
         #statusMsg { 
-            flex-grow: 1; /* 佔據剩餘空間 */
-            margin-right: 10px; /* 與按鈕保持距離 */
+            flex-grow: 1; /* 佔據左側空間 */
+            margin-right: 10px;
             
             color: red; 
             font-weight: bold; 
-            text-align: center; 
-            line-height: 33px; /* 垂直置中文字 */
+            text-align: center; /* 文字置中 */
+            line-height: 33px;
             border: 1px dashed red; 
             background: #fff; 
             font-size: 13px;
             
-            white-space: nowrap; /* 不換行 */
-            overflow: hidden; /* 超出隱藏 */
-            text-overflow: ellipsis; /* 超出顯示... */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
             
-            visibility: hidden; /* 預設隱藏但佔位 */
+            /* 關鍵：預留空間，避免跳動 */
+            visibility: hidden; 
             height: 35px;
         }
 
-        /* V49 新增：按鈕群組 (右側) */
+        /* V51 回歸：按鈕群組 (右側) */
         .action-btns {
-            flex-shrink: 0; /* 不允許縮小 */
+            flex-shrink: 0; 
             display: flex;
             gap: 5px;
         }
         
-        /* 調整上方按鈕樣式 */
         .top-btn {
             width: auto; 
             display: inline-block; 
             padding: 0 10px; 
             height: 35px; 
             line-height: 33px; 
-            margin-bottom: 0; /* 移除底部間距 */
+            margin-bottom: 0;
             font-size: 14px;
         }
 
@@ -161,7 +163,7 @@
 </head>
 <body onload="init()">
 
-    <h2 style="text-align:center; margin:10px 0;">🇻🇳 越南記帳</h2>
+    <h2 style="text-align:center; margin:10px 0;">🇻🇳 越南記帳 V51</h2>
 
     <div class="control-bar">
         <div id="statusMsg">系統準備就緒</div>
@@ -237,6 +239,7 @@
     var resetClickCount = 0;
     var currentFilter = 'ALL';
 
+    // V51: 使用 visibility 控制顯示，保持位置不跳動
     function showMsg(text) {
         var el = document.getElementById('statusMsg');
         el.innerText = text;
@@ -349,7 +352,7 @@
         document.getElementById('amountIn').value = parseFloat(t.amount).toLocaleString('en-US');
         document.getElementById('currencyIn').value = t.currency;
 
-        document.getElementById('addBtn').innerText = "💾 儲存";
+        document.getElementById('addBtn').innerText = "💾 儲存修改";
         document.getElementById('cancelBtn').style.display = "block";
         
         updateRealtime();
@@ -387,10 +390,28 @@
         } else {
             list.push(obj);
         }
+        
+        // V51: 儲存後強制跳回全部，防止使用者誤以為沒存到
+        if (currentFilter !== 'ALL') {
+             currentFilter = 'ALL';
+        }
 
         resetForm();
         saveToLocal();
-        showMsg("✅ 儲存成功！");
+        
+        // V51: 雙重回饋 - 1. 按鈕變色
+        var btn = document.getElementById('addBtn');
+        btn.innerText = "✅ 已儲存";
+        btn.style.backgroundColor = "#28a745"; 
+        btn.style.borderColor = "#28a745";
+        setTimeout(function(){
+            btn.innerText = "＋ 儲存";
+            btn.style.backgroundColor = "#000";
+            btn.style.borderColor = "#000";
+        }, 1500);
+        
+        // V51: 雙重回饋 - 2. 頂部狀態列也顯示 (如果想要的話，不然可以註解掉)
+        // showMsg("✅ 儲存成功"); 
     }
 
     function saveToLocal() {
@@ -487,6 +508,22 @@
         statsTable += "</table>";
 
         summary.innerHTML = statsTable;
+    }
+
+    function resetForm() {
+        document.getElementById('editId').value = "";
+        document.getElementById('itemIn').value = "";
+        document.getElementById('amountIn').value = "";
+        document.getElementById('realtimeText').innerText = "";
+        
+        document.getElementById('addBtn').innerText = "＋ 儲存";
+        document.getElementById('cancelBtn').style.display = "none";
+        
+        var today = new Date();
+        var yyyy = today.getFullYear();
+        var mm = String(today.getMonth() + 1).padStart(2, '0');
+        var dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('dateIn').value = yyyy + "-" + mm + "-" + dd;
     }
 
     function hardResetClick() {
