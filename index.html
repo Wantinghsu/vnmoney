@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🇻🇳 越南記帳</title>
+    <title>🇻🇳 越南記帳 V49 (水平整合版)</title>
     <style>
-        /* V47 樣式：保持 V45/V46 穩定架構 */
+        /* V49 樣式 */
         body { 
             background-color: #f0f0f0; 
             font-family: sans-serif; 
@@ -32,7 +32,54 @@
         button:active { background-color: #bbb; }
         #addBtn { background-color: #000; color: #fff; border: 1px solid #000; }
         
-        /* 分頁按鈕區塊 */
+        /* V49 新增：頂部控制列 (水平排列) */
+        .control-bar {
+            display: flex;
+            justify-content: space-between; /* 左右分開 */
+            align-items: center; /* 垂直置中 */
+            margin-bottom: 10px;
+            height: 35px; /* 固定高度 */
+        }
+
+        /* V49 修改：狀態提示框 (左側) */
+        #statusMsg { 
+            flex-grow: 1; /* 佔據剩餘空間 */
+            margin-right: 10px; /* 與按鈕保持距離 */
+            
+            color: red; 
+            font-weight: bold; 
+            text-align: center; 
+            line-height: 33px; /* 垂直置中文字 */
+            border: 1px dashed red; 
+            background: #fff; 
+            font-size: 13px;
+            
+            white-space: nowrap; /* 不換行 */
+            overflow: hidden; /* 超出隱藏 */
+            text-overflow: ellipsis; /* 超出顯示... */
+            
+            visibility: hidden; /* 預設隱藏但佔位 */
+            height: 35px;
+        }
+
+        /* V49 新增：按鈕群組 (右側) */
+        .action-btns {
+            flex-shrink: 0; /* 不允許縮小 */
+            display: flex;
+            gap: 5px;
+        }
+        
+        /* 調整上方按鈕樣式 */
+        .top-btn {
+            width: auto; 
+            display: inline-block; 
+            padding: 0 10px; 
+            height: 35px; 
+            line-height: 33px; 
+            margin-bottom: 0; /* 移除底部間距 */
+            font-size: 14px;
+        }
+
         .tabs-container {
             display: flex;
             flex-wrap: wrap;
@@ -106,12 +153,6 @@
         .st-name { text-align: left; width: 15%; font-weight: bold; white-space: nowrap; }
         .st-twd { text-align: right; width: 35%; font-weight: bold; }
         .st-vnd { text-align: right; width: 50%; color: #666; font-size: 13px; }
-
-        #statusMsg { 
-            color: red; font-weight: bold; text-align: center; 
-            padding: 5px; border: 1px dashed red; margin-bottom: 10px; 
-            background: #fff; display: none; font-size: 14px;
-        }
         
         #realtimeText {
             color: blue; font-weight: bold; font-size: 14px; margin-top: -8px; margin-bottom: 10px; display: block; min-height: 18px;
@@ -120,14 +161,16 @@
 </head>
 <body onload="init()">
 
-    <h2 style="text-align:center; margin:10px 0;">🇻🇳 越南記帳</h2>
+    <h2 style="text-align:center; margin:10px 0;">🇻🇳 越南記帳 V49</h2>
 
-    <div id="statusMsg">系統準備就緒</div>
-
-    <div style="margin-bottom: 10px; text-align:right;">
-        <input type="file" id="fileIn" onchange="importData(this)" style="display:none">
-        <button onclick="document.getElementById('fileIn').click()" style="width:auto; display:inline-block; padding:0 10px; height:35px; line-height:35px;">匯入</button>
-        <button onclick="exportDataSmart()" style="width:auto; display:inline-block; padding:0 10px; height:35px; line-height:35px; background:#e0e0e0;">備份</button>
+    <div class="control-bar">
+        <div id="statusMsg">系統準備就緒</div>
+        
+        <div class="action-btns">
+            <input type="file" id="fileIn" onchange="importData(this)" style="display:none">
+            <button class="top-btn" onclick="document.getElementById('fileIn').click()">匯入</button>
+            <button class="top-btn" onclick="exportDataSmart()" style="background:#e0e0e0;">備份</button>
+        </div>
     </div>
 
     <div class="input-group">
@@ -197,8 +240,10 @@
     function showMsg(text) {
         var el = document.getElementById('statusMsg');
         el.innerText = text;
-        el.style.display = 'block';
-        setTimeout(function(){ el.style.display = 'none'; }, 3000);
+        el.style.visibility = 'visible'; 
+        setTimeout(function(){ 
+            el.style.visibility = 'hidden'; 
+        }, 3000);
     }
 
     function init() {
@@ -221,7 +266,6 @@
     function setFilter(name) {
         currentFilter = name;
         render();
-        // 重置清空按鈕的狀態，避免文字殘留
         var btn = document.getElementById('resetBtn');
         btn.innerText = "⚠️ 清空資料";
         btn.style.backgroundColor = "#fff";
@@ -445,29 +489,11 @@
         summary.innerHTML = statsTable;
     }
 
-    function resetForm() {
-        document.getElementById('editId').value = "";
-        document.getElementById('itemIn').value = "";
-        document.getElementById('amountIn').value = "";
-        document.getElementById('realtimeText').innerText = "";
-        
-        document.getElementById('addBtn').innerText = "＋ 儲存";
-        document.getElementById('cancelBtn').style.display = "none";
-        
-        var today = new Date();
-        var yyyy = today.getFullYear();
-        var mm = String(today.getMonth() + 1).padStart(2, '0');
-        var dd = String(today.getDate()).padStart(2, '0');
-        document.getElementById('dateIn').value = yyyy + "-" + mm + "-" + dd;
-    }
-
-    // --- V47 修改：智慧清空功能 ---
     function hardResetClick() {
         var btn = document.getElementById('resetBtn');
         var targetName = (currentFilter === 'ALL') ? "所有" : currentFilter;
 
         if(resetClickCount === 0) {
-            // 第一次點擊：提示要清空誰
             btn.innerText = "🛑 確定清空【" + targetName + "】資料？";
             btn.style.backgroundColor = "red";
             btn.style.color = "white";
@@ -479,12 +505,9 @@
                 btn.style.color = "red";
             }, 3000);
         } else {
-            // 第二次點擊：執行清空
             if (currentFilter === 'ALL') {
-                // 如果是全部，直接清空整個列表
                 list = [];
             } else {
-                // 如果是特定人，保留「非此人」的資料
                 var keptList = [];
                 for(var i=0; i<list.length; i++) {
                     if (list[i].member !== currentFilter) {
@@ -497,7 +520,6 @@
             saveToLocal();
             showMsg("💥 已清空【" + targetName + "】資料");
             
-            // 恢復按鈕狀態
             resetClickCount = 0;
             btn.innerText = "⚠️ 清空資料";
             btn.style.backgroundColor = "#fff";
