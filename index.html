@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🇻🇳 越南記帳</title>
     <style>
-        /* V57 樣式：保持 V56 穩定架構 */
+        /* V58 樣式 */
         body { 
             background-color: #f0f0f0; 
             font-family: sans-serif; 
@@ -161,7 +161,7 @@
         <div id="statusMsg">系統準備就緒</div>
         
         <div class="action-btns">
-            <input type="file" id="fileIn" accept=".json,application/json" onchange="importData(this)" style="display:none">
+            <input type="file" id="fileIn" accept=".json,application/json,text/plain,*/*" onchange="importData(this)" style="display:none">
             
             <button class="top-btn" onclick="document.getElementById('fileIn').click()">匯入</button>
             <button class="top-btn" onclick="exportDataSmart()" style="background:#e0e0e0;">備份</button>
