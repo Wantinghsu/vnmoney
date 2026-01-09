@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🇻🇳 越南記帳</title>
     <style>
-        /* V57 樣式：保持 V56 穩定架構 */
+        /* V56 樣式 */
         body { 
             background-color: #f0f0f0; 
             font-family: sans-serif; 
@@ -161,8 +161,7 @@
         <div id="statusMsg">系統準備就緒</div>
         
         <div class="action-btns">
-            <input type="file" id="fileIn" accept=".json,application/json" onchange="importData(this)" style="display:none">
-            
+            <input type="file" id="fileIn" onchange="importData(this)" style="display:none">
             <button class="top-btn" onclick="document.getElementById('fileIn').click()">匯入</button>
             <button class="top-btn" onclick="exportDataSmart()" style="background:#e0e0e0;">備份</button>
         </div>
@@ -522,6 +521,22 @@
         summary.innerHTML = statsTable;
     }
 
+    function resetForm() {
+        document.getElementById('editId').value = "";
+        document.getElementById('itemIn').value = "";
+        document.getElementById('amountIn').value = "";
+        document.getElementById('realtimeText').innerText = "";
+        
+        document.getElementById('addBtn').innerText = "＋ 儲存";
+        document.getElementById('cancelBtn').style.display = "none";
+        
+        var today = new Date();
+        var yyyy = today.getFullYear();
+        var mm = String(today.getMonth() + 1).padStart(2, '0');
+        var dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('dateIn').value = yyyy + "-" + mm + "-" + dd;
+    }
+
     function hardResetClick() {
         var btn = document.getElementById('resetBtn');
         var targetName = (currentFilter === 'ALL') ? "所有" : currentFilter;
@@ -560,6 +575,7 @@
         }
     }
 
+    // --- V56 修改：匯出功能 (Android 相容性修復) ---
     async function exportDataSmart() {
         if(list.length === 0) { showMsg("沒資料", true); return; }
         
@@ -573,23 +589,28 @@
         var ss = String(now.getSeconds()).padStart(2, '0');
         var fileName = "越南記帳_" + YYYY + MM + DD + "_" + HH + mm + "_" + ss + ".json";
 
+        // 嘗試使用分享功能
         if (navigator.share && navigator.canShare) {
             try {
+                // 注意：這裡先檢查是否支援檔案分享
                 var file = new File([jsonStr], fileName, { type: "application/json" });
                 if (navigator.canShare({ files: [file] })) {
                     await navigator.share({ files: [file] });
                     showMsg("✅ 匯出成功！", false);
-                    return; 
+                    return; // 如果分享成功，就結束，不執行下面的下載
                 }
             } catch (err) {
+                // 如果是使用者取消，就顯示取消
                 if (err.name === 'AbortError' || err.message.indexOf('Abort') !== -1) {
                     showMsg("已取消匯出", true);
                     return; 
                 }
+                // 如果是其他錯誤 (例如 Android 不支援 JSON 分享)，不顯示錯誤，而是往下執行下載邏輯
                 console.log("分享失敗，轉為下載模式", err);
             }
         }
 
+        // 降級處理：直接下載 (適用於電腦版 或 Android 分享失敗時)
         var blob = new Blob([jsonStr], {type: "application/octet-stream"});
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
@@ -598,6 +619,7 @@
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        
         showMsg("✅ 匯出成功 (已下載)", false);
     }
 
