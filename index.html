@@ -4,13 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🇻🇳 越南記帳</title>
+    
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#ffffff">
+
     <style>
-        /* V56 樣式 */
+        /* V61 樣式：極簡穩定 */
         body { 
             background-color: #f0f0f0; 
             font-family: sans-serif; 
             margin: 0; 
             padding: 5px; 
+            padding-top: env(safe-area-inset-top, 10px);
             touch-action: manipulation; 
         }
         * { box-sizing: border-box; }
@@ -31,7 +39,7 @@
         button { background-color: #ddd; font-weight: bold; cursor: pointer; border-width: 1px; }
         button:active { background-color: #bbb; }
         
-        #addBtn { background-color: #000; color: #fff; border: 1px solid #000; transition: all 0.2s; }
+        #addBtn { background-color: #000; color: #fff; border: 1px solid #000; transition: background-color 0.2s; }
         
         .control-bar {
             display: flex;
@@ -74,50 +82,15 @@
             font-size: 14px;
         }
 
-        .tabs-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-bottom: 5px;
-        }
-        .tab-btn {
-            flex: 1;
-            height: 35px;
-            line-height: 33px;
-            font-size: 14px;
-            padding: 0;
-            border: 1px solid #999;
-            background-color: #fff;
-            color: #333;
-            min-width: 40px;
-        }
-        .tab-btn.active {
-            background-color: #000 !important;
-            color: #fff !important;
-            border-color: #000;
-        }
+        .tabs-container { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 5px; }
+        .tab-btn { flex: 1; height: 35px; line-height: 33px; font-size: 14px; padding: 0; border: 1px solid #999; background-color: #fff; color: #333; min-width: 40px; }
+        .tab-btn.active { background-color: #000 !important; color: #fff !important; border-color: #000; }
 
-        #listTable { 
-            width: 100%; 
-            border-collapse: collapse; 
-            background: #fff; 
-            border: 1px solid #000; 
-            font-size: 14px; 
-            table-layout: fixed; 
-        }
-        
-        #listTable thead th {
-            background-color: #eee;
-            border-bottom: 1px solid #000;
-            padding: 8px 4px;
-            font-size: 13px;
-            text-align: center;
-        }
-
+        #listTable { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #000; font-size: 14px; table-layout: fixed; }
+        #listTable thead th { background-color: #eee; border-bottom: 1px solid #000; padding: 8px 4px; font-size: 13px; text-align: center; }
         .col-date { width: 15%; text-align: center; color: #666; font-size: 12px; font-weight: bold; vertical-align: top; padding-top: 12px; }
         .col-detail { width: 60%; padding: 8px 4px; vertical-align: middle; }
         .col-op { width: 25%; text-align: center; vertical-align: middle; padding: 0 2px; }
-
         #listTable td { border-bottom: 1px solid #ddd; }
 
         .detail-line1 { font-size: 15px; font-weight: bold; color: #000; margin-bottom: 2px; }
@@ -125,21 +98,8 @@
         .money-main { color: blue; font-weight: bold; }
         .money-sub { color: #666; font-size: 11px; }
 
-        .btn-small {
-            width: auto; height: 32px; line-height: 30px;
-            font-size: 14px; padding: 0 8px; margin: 0 2px;
-            border: 1px solid #999; 
-            background: #eee;
-            display: inline-block; color: #000;
-            touch-action: manipulation;
-        }
-        
-        .btn-del { 
-            background-color: #fff; 
-            border: 1px solid red; 
-            color: red; 
-            transition: all 0.2s; 
-        }
+        .btn-small { width: auto; height: 32px; line-height: 30px; font-size: 14px; padding: 0 8px; margin: 0 2px; border: 1px solid #999; background: #eee; display: inline-block; color: #000; touch-action: manipulation; }
+        .btn-del { background-color: #fff; border: 1px solid red; color: red; transition: all 0.2s; }
         
         #summary { background: #fff; border: 2px solid #000; padding: 10px; font-size: 14px; color: #000; }
         .stats-table { width: 100%; border-collapse: collapse; }
@@ -148,9 +108,7 @@
         .st-twd { text-align: right; width: 35%; font-weight: bold; }
         .st-vnd { text-align: right; width: 50%; color: #666; font-size: 13px; }
         
-        #realtimeText {
-            color: blue; font-weight: bold; font-size: 14px; margin-top: -8px; margin-bottom: 10px; display: block; min-height: 18px;
-        }
+        #realtimeText { color: blue; font-weight: bold; font-size: 14px; margin-top: -8px; margin-bottom: 10px; display: block; min-height: 18px; }
     </style>
 </head>
 <body onload="init()">
@@ -159,7 +117,6 @@
 
     <div class="control-bar">
         <div id="statusMsg">系統準備就緒</div>
-        
         <div class="action-btns">
             <input type="file" id="fileIn" onchange="importData(this)" style="display:none">
             <button class="top-btn" onclick="document.getElementById('fileIn').click()">匯入</button>
@@ -230,41 +187,43 @@
     var deleteConfirmState = {}; 
     var resetClickCount = 0;
     var currentFilter = 'ALL';
-    var btnResetTimer = null;
 
+    // ------------------------------------------
+    // 1. 工具函式 (移到最上方，避免 ReferenceError)
+    // ------------------------------------------
+    
     function showMsg(text, isError) {
         var el = document.getElementById('statusMsg');
         el.innerText = text;
-        
         if (isError) {
-            el.style.color = "red";
-            el.style.borderColor = "red";
+            el.style.color = "red"; el.style.borderColor = "red";
         } else {
-            el.style.color = "blue";
-            el.style.borderColor = "blue";
+            el.style.color = "blue"; el.style.borderColor = "blue";
         }
-        
         el.style.visibility = 'visible'; 
         setTimeout(function(){ 
             el.style.visibility = 'hidden'; 
         }, 3000);
     }
 
-    function init() {
+    function resetForm() {
+        document.getElementById('editId').value = "";
+        document.getElementById('itemIn').value = "";
+        document.getElementById('amountIn').value = "";
+        document.getElementById('realtimeText').innerText = "";
+        
+        var btn = document.getElementById('addBtn');
+        btn.innerText = "＋ 儲存";
+        btn.style.backgroundColor = "#000";
+        btn.style.borderColor = "#000";
+        
+        document.getElementById('cancelBtn').style.display = "none";
+        
         var today = new Date();
         var yyyy = today.getFullYear();
         var mm = String(today.getMonth() + 1).padStart(2, '0');
         var dd = String(today.getDate()).padStart(2, '0');
-        var todayStr = yyyy + "-" + mm + "-" + dd;
-        
-        document.getElementById('dateIn').value = todayStr;
-
-        var str = localStorage.getItem(KEY);
-        if(str) {
-            try { list = JSON.parse(str); } catch(e){ list = []; }
-        }
-        render();
-        updateRealtime();
+        document.getElementById('dateIn').value = yyyy + "-" + mm + "-" + dd;
     }
 
     function setFilter(name) {
@@ -275,6 +234,25 @@
         btn.style.backgroundColor = "#fff";
         btn.style.color = "red";
         resetClickCount = 0;
+    }
+
+    // ------------------------------------------
+    // 2. 核心邏輯
+    // ------------------------------------------
+
+    function init() {
+        var today = new Date();
+        var yyyy = today.getFullYear();
+        var mm = String(today.getMonth() + 1).padStart(2, '0');
+        var dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('dateIn').value = yyyy + "-" + mm + "-" + dd;
+
+        var str = localStorage.getItem(KEY);
+        if(str) {
+            try { list = JSON.parse(str); } catch(e){ list = []; }
+        }
+        render();
+        updateRealtime();
     }
 
     function formatInputAndCalc(input) {
@@ -296,12 +274,7 @@
         var amt = getRawAmount();
         var curr = document.getElementById('currencyIn').value;
         var display = document.getElementById('realtimeText');
-
-        if (isNaN(amt) || amt === 0) {
-            display.innerText = "";
-            return;
-        }
-
+        if (isNaN(amt) || amt === 0) { display.innerText = ""; return; }
         if (curr === 'TWD') {
             var res = Math.round(amt * RATE);
             display.innerText = "= " + res.toLocaleString() + " VND";
@@ -310,62 +283,6 @@
             display.innerText = "= " + res.toLocaleString() + " TWD";
         }
     }
-
-    window.del = function(id, btn) {
-        if (!deleteConfirmState[id]) {
-            deleteConfirmState[id] = true;
-            if(btn) {
-                btn.style.backgroundColor = "red";
-                btn.style.color = "white";
-                setTimeout(function() {
-                    deleteConfirmState[id] = false;
-                    if(btn) {
-                        btn.style.backgroundColor = "#fff";
-                        btn.style.color = "red";
-                    }
-                }, 3000);
-            }
-            return;
-        }
-
-        var newList = [];
-        for(var i=0; i<list.length; i++) {
-            if(String(list[i].id) !== String(id)) newList.push(list[i]);
-        }
-        list = newList;
-        
-        delete deleteConfirmState[id];
-        saveToLocal();
-        showMsg("🗑️ 資料已刪除", true);
-    };
-
-    window.edit = function(id) {
-        var t = null;
-        for(var i=0; i<list.length; i++) {
-            if(String(list[i].id) === String(id)) t = list[i];
-        }
-        if(!t) return;
-
-        if(btnResetTimer) clearTimeout(btnResetTimer);
-
-        document.getElementById('editId').value = t.id;
-        document.getElementById('dateIn').value = t.date;
-        document.getElementById('memberIn').value = t.member;
-        document.getElementById('itemIn').value = t.item;
-        document.getElementById('amountIn').value = parseFloat(t.amount).toLocaleString('en-US');
-        document.getElementById('currencyIn').value = t.currency;
-
-        var btn = document.getElementById('addBtn');
-        btn.innerText = "💾 儲存";
-        btn.style.backgroundColor = "#000";
-        btn.style.borderColor = "#000";
-        
-        document.getElementById('cancelBtn').style.display = "block";
-        
-        updateRealtime();
-        window.scrollTo(0,0);
-        showMsg("✏️ 進入編輯模式", false);
-    };
 
     function saveData() {
         try {
@@ -388,37 +305,34 @@
                 "currency": c
             };
 
-            if(id) {
+            if(id) { // 編輯舊資料
                 var idx = -1;
                 for(var k=0; k<list.length; k++) {
                     if(String(list[k].id) === String(id)) idx = k;
                 }
                 if(idx !== -1) list[idx] = obj;
                 else list.push(obj);
-            } else {
+            } else { // 新增資料
                 list.push(obj);
             }
             
-            if (currentFilter !== 'ALL') {
-                 currentFilter = 'ALL';
-            }
+            // 強制切回全部，確保看到資料
+            if (currentFilter !== 'ALL') currentFilter = 'ALL';
 
-            resetForm();
-            saveToLocal();
+            saveToLocal(); // 這裡會呼叫 render()
+            resetForm(); // 重置表單，因為放在最上方定義，這裡絕對找得到
             
-            showMsg("✅ 儲存成功！", false);
-            
+            // 簡單的按鈕回饋 (不使用複雜變數)
             var btn = document.getElementById('addBtn');
             btn.innerText = "✅ 已儲存";
             btn.style.backgroundColor = "#28a745"; 
             btn.style.borderColor = "#28a745";
             
-            if(btnResetTimer) clearTimeout(btnResetTimer);
-            btnResetTimer = setTimeout(function(){
+            setTimeout(function(){
                 btn.innerText = "＋ 儲存";
                 btn.style.backgroundColor = "#000";
                 btn.style.borderColor = "#000";
-            }, 1500);
+            }, 1000);
 
         } catch (err) {
             alert("程式發生錯誤：" + err);
@@ -428,6 +342,93 @@
     function saveToLocal() {
         localStorage.setItem(KEY, JSON.stringify(list));
         render();
+    }
+
+    window.edit = function(id) {
+        var t = null;
+        for(var i=0; i<list.length; i++) {
+            if(String(list[i].id) === String(id)) t = list[i];
+        }
+        if(!t) return;
+
+        document.getElementById('editId').value = t.id;
+        document.getElementById('dateIn').value = t.date;
+        document.getElementById('memberIn').value = t.member;
+        document.getElementById('itemIn').value = t.item;
+        document.getElementById('amountIn').value = parseFloat(t.amount).toLocaleString('en-US');
+        document.getElementById('currencyIn').value = t.currency;
+
+        var btn = document.getElementById('addBtn');
+        btn.innerText = "💾 儲存修改";
+        btn.style.backgroundColor = "#000";
+        btn.style.borderColor = "#000";
+        
+        document.getElementById('cancelBtn').style.display = "block";
+        updateRealtime();
+        window.scrollTo(0,0);
+        showMsg("✏️ 進入編輯模式", false);
+    };
+
+    window.del = function(id, btn) {
+        if (!deleteConfirmState[id]) {
+            deleteConfirmState[id] = true;
+            if(btn) {
+                btn.style.backgroundColor = "red";
+                btn.style.color = "white";
+                setTimeout(function() {
+                    deleteConfirmState[id] = false;
+                    if(btn) {
+                        btn.style.backgroundColor = "#fff";
+                        btn.style.color = "red";
+                    }
+                }, 3000);
+            }
+            return;
+        }
+        var newList = [];
+        for(var i=0; i<list.length; i++) {
+            if(String(list[i].id) !== String(id)) newList.push(list[i]);
+        }
+        list = newList;
+        delete deleteConfirmState[id];
+        saveToLocal();
+        showMsg("🗑️ 資料已刪除", true);
+    };
+
+    function hardResetClick() {
+        var btn = document.getElementById('resetBtn');
+        var targetName = (currentFilter === 'ALL') ? "所有" : currentFilter;
+
+        if(resetClickCount === 0) {
+            btn.innerText = "🛑 確定清空【" + targetName + "】資料？";
+            btn.style.backgroundColor = "red";
+            btn.style.color = "white";
+            resetClickCount = 1;
+            setTimeout(function(){
+                resetClickCount = 0;
+                btn.innerText = "⚠️ 清空資料";
+                btn.style.backgroundColor = "#fff";
+                btn.style.color = "red";
+            }, 3000);
+        } else {
+            if (currentFilter === 'ALL') {
+                list = [];
+            } else {
+                var keptList = [];
+                for(var i=0; i<list.length; i++) {
+                    if (list[i].member !== currentFilter) {
+                        keptList.push(list[i]);
+                    }
+                }
+                list = keptList;
+            }
+            saveToLocal();
+            showMsg("💥 已清空【" + targetName + "】資料", true);
+            resetClickCount = 0;
+            btn.innerText = "⚠️ 清空資料";
+            btn.style.backgroundColor = "#fff";
+            btn.style.color = "red";
+        }
     }
 
     function render() {
@@ -459,9 +460,7 @@
             if(map[row.member] === undefined) map[row.member] = 0;
             map[row.member] += val;
 
-            if (currentFilter !== 'ALL' && row.member !== currentFilter) {
-                continue;
-            }
+            if (currentFilter !== 'ALL' && row.member !== currentFilter) continue;
 
             var convertText = "";
             if (row.currency === 'TWD') {
@@ -471,7 +470,6 @@
                 var twdVal = Math.round(amt / RATE);
                 convertText = " (=" + twdVal.toLocaleString() + " TWD)";
             }
-
             var shortDate = row.date.substring(5);
 
             tableHtml += "<tr>";
@@ -490,95 +488,22 @@
             tableHtml += "</tr>";
         }
         tbody.innerHTML = tableHtml;
-
-        if (tableHtml === "") {
-            tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding:20px; color:#999;'>此人無消費紀錄</td></tr>";
-        }
+        if (tableHtml === "") tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding:20px; color:#999;'>此人無消費紀錄</td></tr>";
 
         var statsTable = "<table class='stats-table'>";
         for(var name in map) {
             var rawTWD = map[name];
             var displayTWD = Math.round(rawTWD);
             var displayVND = Math.round(rawTWD * RATE);
-            
-            statsTable += "<tr>";
-            statsTable += "<td class='st-name'>" + name + ":</td>";
-            statsTable += "<td class='st-twd'>" + displayTWD.toLocaleString() + " TWD</td>";
-            statsTable += "<td class='st-vnd'>(" + displayVND.toLocaleString() + " VND)</td>";
-            statsTable += "</tr>";
+            statsTable += "<tr><td class='st-name'>" + name + ":</td><td class='st-twd'>" + displayTWD.toLocaleString() + " TWD</td><td class='st-vnd'>(" + displayVND.toLocaleString() + " VND)</td></tr>";
         }
-
         var grandVND = Math.round(totalTWD * RATE);
-        
-        statsTable += "<tr style='border-top: 1px solid #000;'>"; 
-        statsTable += "<td class='st-name' style='padding-top:8px;'>總計:</td>";
-        statsTable += "<td class='st-twd' style='padding-top:8px; color:blue; font-size:15px;'>" + Math.round(totalTWD).toLocaleString() + " TWD</td>";
-        statsTable += "<td class='st-vnd' style='padding-top:8px;'>(" + grandVND.toLocaleString() + " VND)</td>";
-        statsTable += "</tr>";
-        
-        statsTable += "</table>";
-
+        statsTable += "<tr style='border-top: 1px solid #000;'><td class='st-name' style='padding-top:8px;'>總計:</td><td class='st-twd' style='padding-top:8px; color:blue; font-size:15px;'>" + Math.round(totalTWD).toLocaleString() + " TWD</td><td class='st-vnd' style='padding-top:8px;'>(" + grandVND.toLocaleString() + " VND)</td></tr></table>";
         summary.innerHTML = statsTable;
     }
 
-    function resetForm() {
-        document.getElementById('editId').value = "";
-        document.getElementById('itemIn').value = "";
-        document.getElementById('amountIn').value = "";
-        document.getElementById('realtimeText').innerText = "";
-        
-        document.getElementById('addBtn').innerText = "＋ 儲存";
-        document.getElementById('cancelBtn').style.display = "none";
-        
-        var today = new Date();
-        var yyyy = today.getFullYear();
-        var mm = String(today.getMonth() + 1).padStart(2, '0');
-        var dd = String(today.getDate()).padStart(2, '0');
-        document.getElementById('dateIn').value = yyyy + "-" + mm + "-" + dd;
-    }
-
-    function hardResetClick() {
-        var btn = document.getElementById('resetBtn');
-        var targetName = (currentFilter === 'ALL') ? "所有" : currentFilter;
-
-        if(resetClickCount === 0) {
-            btn.innerText = "🛑 確定清空【" + targetName + "】資料？";
-            btn.style.backgroundColor = "red";
-            btn.style.color = "white";
-            resetClickCount = 1;
-            setTimeout(function(){
-                resetClickCount = 0;
-                btn.innerText = "⚠️ 清空資料";
-                btn.style.backgroundColor = "#fff";
-                btn.style.color = "red";
-            }, 3000);
-        } else {
-            if (currentFilter === 'ALL') {
-                list = [];
-            } else {
-                var keptList = [];
-                for(var i=0; i<list.length; i++) {
-                    if (list[i].member !== currentFilter) {
-                        keptList.push(list[i]);
-                    }
-                }
-                list = keptList;
-            }
-            
-            saveToLocal();
-            showMsg("💥 已清空【" + targetName + "】資料", true);
-            
-            resetClickCount = 0;
-            btn.innerText = "⚠️ 清空資料";
-            btn.style.backgroundColor = "#fff";
-            btn.style.color = "red";
-        }
-    }
-
-    // --- V56 修改：匯出功能 (Android 相容性修復) ---
     async function exportDataSmart() {
         if(list.length === 0) { showMsg("沒資料", true); return; }
-        
         var jsonStr = JSON.stringify(list);
         var now = new Date();
         var YYYY = now.getFullYear();
@@ -589,28 +514,21 @@
         var ss = String(now.getSeconds()).padStart(2, '0');
         var fileName = "越南記帳_" + YYYY + MM + DD + "_" + HH + mm + "_" + ss + ".json";
 
-        // 嘗試使用分享功能
         if (navigator.share && navigator.canShare) {
             try {
-                // 注意：這裡先檢查是否支援檔案分享
                 var file = new File([jsonStr], fileName, { type: "application/json" });
                 if (navigator.canShare({ files: [file] })) {
                     await navigator.share({ files: [file] });
                     showMsg("✅ 匯出成功！", false);
-                    return; // 如果分享成功，就結束，不執行下面的下載
+                    return; 
                 }
             } catch (err) {
-                // 如果是使用者取消，就顯示取消
                 if (err.name === 'AbortError' || err.message.indexOf('Abort') !== -1) {
                     showMsg("已取消匯出", true);
                     return; 
                 }
-                // 如果是其他錯誤 (例如 Android 不支援 JSON 分享)，不顯示錯誤，而是往下執行下載邏輯
-                console.log("分享失敗，轉為下載模式", err);
             }
         }
-
-        // 降級處理：直接下載 (適用於電腦版 或 Android 分享失敗時)
         var blob = new Blob([jsonStr], {type: "application/octet-stream"});
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
@@ -619,7 +537,6 @@
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        
         showMsg("✅ 匯出成功 (已下載)", false);
     }
 
@@ -634,9 +551,7 @@
                     var addedCount = 0;
                     var updatedCount = 0;
                     var idMap = {};
-                    for(var k=0; k<list.length; k++) {
-                        idMap[String(list[k].id)] = k;
-                    }
+                    for(var k=0; k<list.length; k++) idMap[String(list[k].id)] = k;
 
                     for(var i=0; i<arr.length; i++) {
                         var newItem = arr[i];
@@ -651,7 +566,6 @@
                             addedCount++;
                         }
                     }
-                    
                     saveToLocal();
                     if(addedCount > 0 || updatedCount > 0) {
                         showMsg("匯入成功 (新增:" + addedCount + ", 覆蓋:" + updatedCount + ")", false);
